@@ -39,4 +39,15 @@ Fixpoint bfs (fuel : nat) (w : list (state * move)) (settled : state_fmap) :
 
 End explore.
 
-    
+Check bfs.
+
+(* Instantiating the final state map to association lists. *)
+Definition bfsl (state move : Type) (n : nat)
+  (state_eq_dec : forall x y : state, {x = y} + {x <> y})
+  (step : state -> list (state * move)) (w settled : list (state * move)) :=
+  bfs state move (list (state * move)) (fun state_set state => 
+                    match find (fun p => if state_eq_dec (fst p) state then true else false) state_set with
+                    | None => None
+                    | Some (_, m) => Some m
+                    end)
+        (fun sset s m => (s, m) :: sset) step n w settled.
