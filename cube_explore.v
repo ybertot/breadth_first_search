@@ -532,16 +532,16 @@ Definition make_solution (x : int) : list (Z * int) :=
       match bfs_find table x with
       | Some move =>
         if move =? 1 then
-           let x' := compute_step_up x in
+           let x' := compute_state_up x in
              (1, x') :: mkp x p
         else if move =? 2 then
-           let x' := compute_step_right x in
+           let x' := compute_state_right x in
              (1, x') :: mkp x p
         else if move =? 3 then
-           let x' := compute_step_down x in
+           let x' := compute_state_down x in
              (1, x') :: mkp x p
         else if move =? 4 then
-           let x' := compute_step_left x in
+           let x' := compute_state_left x in
              (1, x') :: mkp x p
         else nil
       end
