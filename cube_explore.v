@@ -29,28 +29,54 @@ rewrite xy in xlty.
 now apply Z.lt_irrefl in xlty.
 Qed.
 
+Lemma compare_eq (x y : int) :
+   (to_Z x ?= to_Z y)%Z = Eq -> eq x y.
+Proof.
+intros cmp; apply Z.compare_eq in cmp.
+now rewrite <- (of_to_Z x), <- (of_to_Z y), cmp.
+Qed.
+
+Lemma compare_lt (x y : int) :
+  (to_Z x ?= to_Z y)%Z = Lt -> lt x y.
+Proof.
+now rewrite Z.compare_lt_iff.
+Qed.
+
+Lemma compare_gt (x y : int) :
+  (to_Z x ?= to_Z y)%Z = Gt -> lt y x.
+Proof.
+now rewrite Z.compare_gt_iff.
+Qed.
+
+
 Definition compare (x y : t) : OrderedType.Compare lt eq x y.
 destruct (to_Z x ?= to_Z y)%Z eqn:cmp.  
 - apply OrderedType.EQ.
-  apply Z.compare_eq in cmp.
-  now rewrite <- (of_to_Z x), <- (of_to_Z y), cmp.
+  now apply compare_eq.
 - apply OrderedType.LT.
-  unfold lt.
-  now rewrite <- Z.compare_lt_iff.
+  now apply compare_lt.
 - apply OrderedType.GT.
-  unfold lt.
-  now rewrite <- Z.compare_gt_iff.
+  now apply compare_gt.
 Defined.
+
+Lemma eq_Z_to_eq_int (x y : t) : to_Z x = to_Z y -> x = y.
+Proof.
+now intros cmp; rewrite <- (of_to_Z x), <- (of_to_Z y), cmp.
+Qed.
+
+Lemma not_eq_Z_to_not_eq_int (x y : t) : to_Z x <> to_Z y -> x <> y.
+Proof.
+now intros cmp xeqy; case cmp; rewrite xeqy.
+Qed.
 
 Lemma eq_dec : forall x y : t, {x = y}+{x <> y}.
 Proof.
 intros x y; case (Z.eq_dec (to_Z x) (to_Z y)); intros cmp.
 - left.   
-  now rewrite <- (of_to_Z x), <- (of_to_Z y), cmp.
+  now apply eq_Z_to_eq_int.
 - right.
-  intros xy.
-  now case cmp; rewrite xy.
-Qed.
+  now apply not_eq_Z_to_not_eq_int.
+Defined.
 
 End int_as_OT.
 
@@ -480,6 +506,7 @@ Compute print_position (get_position (nth 6 final_states 0)).
 Definition cube_explore (n : nat) : intmap.t Z + (list (int * Z) * intmap.t Z) :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
     (map (fun i => (i, 0%Z)) final_states) empty.
+
 Time Compute match cube_explore 17 with inr _ => false | inl _ => true end.
 (* answer for 17 is true in 17s *)
 Time Compute match cube_explore 16 with inr _ => false | inl _ => true end.
@@ -494,3 +521,28 @@ Definition furthest_positions :=
 Definition solution_map := Eval vm_compute in
   match cube_explore 16 with inl v => v | _ => empty end. *)
 
+Definition make_solution (x : int) : list (Z * int) :=
+  let table := match cube_explore 16 with
+               | inl table => table | inr _ => empty
+               end in
+  fix mkp (x : int)(f : fuel) : list (Z * int) :=
+    match fuel with
+      0 => nil
+    | S p =>
+      match bfs_find table x with
+      | Some move =>
+        if move =? 1 then
+           let x' := compute_step_up x in
+             (1, x') :: mkp x p
+        else if move =? 2 then
+           let x' := compute_step_right x in
+             (1, x') :: mkp x p
+        else if move =? 3 then
+           let x' := compute_step_down x in
+             (1, x') :: mkp x p
+        else if move =? 4 then
+           let x' := compute_step_left x in
+             (1, x') :: mkp x p
+        else nil
+      end
+    end x 16.
