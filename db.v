@@ -3,7 +3,7 @@ Require Import Coq.FSets.FMapAVL Coq.Structures.OrderedTypeEx ZArith.
 
 Include Z_as_OT.
 
-Module Zot := Make Z_as_OT.
+Module Zot := FMapAVL.Make Z_as_OT.
 
 Arguments Zot.find _ (_)%Z _.
 Arguments Zot.add _ (_)%Z _ _.
