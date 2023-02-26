@@ -525,7 +525,7 @@ Definition make_solution (x : int) : list (Z * int) :=
   let table := match cube_explore 16 with
                | inl table => table | inr _ => empty
                end in
-  fix mkp (x : int)(f : fuel) : list (Z * int) :=
+  fix mkp (x : int)(fuel : nat) : list (Z * int) :=
     match fuel with
       0 => nil
     | S p =>
