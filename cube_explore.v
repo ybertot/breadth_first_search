@@ -486,9 +486,11 @@ Time Compute match cube_explore 16 with inr _ => false | inl _ => true end.
 (* answer for 16 is true in 17s *)
 Time Compute match cube_explore 15 with inr _ => false | inl _ => true end.
 (* answer for 15 is false in 17s *)
-Time Compute match cube_explore 14 with inl _ => 0%nat | inr (l, _) =>
-   List.length l end.
-Definition solution_map := Eval vm_compute in
-  match cube_explore 16 with inl v => v | _ => empty end.
+Definition furthest_positions :=
+  match cube_explore 14 with inl _ => nil | inr (l, _) => l end.
 
-(* Amazingly this definition takes a very long time to make. *)
+(* Amazingly this definition takes a very long time to return, while it is
+   making the same computations as computations just before.
+Definition solution_map := Eval vm_compute in
+  match cube_explore 16 with inl v => v | _ => empty end. *)
+
