@@ -1,9 +1,9 @@
-Require Import List ZArith Uint63 String.
-Require Import bfs db.
+Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
+Require Import bfs.
 
 Import ListNotations.
 
-Module int_as_OT <: Structures.OrderedTypeEx.UsualOrderedType.
+Module int_as_OT <: UsualOrderedType.
 
 Definition t := int.
 
@@ -49,6 +49,7 @@ now rewrite Z.compare_gt_iff.
 Qed.
 
 
+Locate Compare.
 Definition compare (x y : t) : OrderedType.Compare lt eq x y.
 destruct (to_Z x ?= to_Z y)%Z eqn:cmp.  
 - apply OrderedType.EQ.
