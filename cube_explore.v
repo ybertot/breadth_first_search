@@ -403,7 +403,7 @@ Definition compute_state_left s : option int :=
     let py := get_positionY s in
     let s1 := set_positionXY s (px - 1) py in
     let c := get_cube s in
-    let c1 := roll_up c in
+    let c1 := roll_left c in
     let s2 := set_cube s1 c1 in
      Some (swap_state s2).
 
@@ -414,7 +414,7 @@ Definition compute_state_right s : option int :=
     let py := get_positionY s in
     let s1 := set_positionXY s (px + 1) py in
     let c := get_cube s in
-    let c1 := roll_down c in
+    let c1 := roll_right c in
     let s2 := set_cube s1 c1 in
      Some (swap_state s2).
 
@@ -427,7 +427,7 @@ match compute_state_up s with
   | Some s2 =>
     match compute_state_up s2 with
     | None => nil
-    | Some s3 => [(s3, 1%Z)]
+    | Some s3 => [(s3, 3%Z)]
     end
   end
 end.
@@ -441,7 +441,7 @@ match compute_state_right s with
   | Some s2 =>
     match compute_state_right s2 with
     | None => nil
-    | Some s3 => [(s3, 2%Z)]
+    | Some s3 => [(s3, 4%Z)]
     end
   end
 end.
@@ -455,7 +455,7 @@ match compute_state_down s with
   | Some s2 =>
     match compute_state_down s2 with
     | None => nil
-    | Some s3 => [(s3, 3%Z)]
+    | Some s3 => [(s3, 1%Z)]
     end
   end
 end.
@@ -469,7 +469,7 @@ match compute_state_left s with
   | Some s2 =>
     match compute_state_left s2 with
     | None => nil
-    | Some s3 => [(s3, 4%Z)]
+    | Some s3 => [(s3, 2%Z)]
     end
   end
 end.
@@ -507,43 +507,111 @@ Compute print_position (get_position (nth 6 final_states 0)).
 Definition cube_explore (n : nat) : intmap.t Z + (list (int * Z) * intmap.t Z) :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
     (map (fun i => (i, 0%Z)) final_states) empty.
-
+(*
+Eval compute in match cube_explore 17 with inr _ => false | inl _ => true end.
 Time Compute match cube_explore 17 with inr _ => false | inl _ => true end.
 (* answer for 17 is true in 17s *)
 Time Compute match cube_explore 16 with inr _ => false | inl _ => true end.
 (* answer for 16 is true in 17s *)
 Time Compute match cube_explore 15 with inr _ => false | inl _ => true end.
 (* answer for 15 is false in 17s *)
+*)
 Definition furthest_positions :=
   match cube_explore 14 with inl _ => nil | inr (l, _) => l end.
+
+Definition all_solutions := match cube_explore 16 with
+   inl t => t | _ => empty
+end.
+
+Time Compute furthest_positions.
 
 (* Amazingly this definition takes a very long time to return, while it is
    making the same computations as computations just before.
 Definition solution_map := Eval vm_compute in
   match cube_explore 16 with inl v => v | _ => empty end. *)
 
-Definition make_solution (x : int) : list (Z * int) :=
-  let table := match cube_explore 16 with
-               | inl table => table | inr _ => empty
-               end in
-  fix mkp (x : int)(fuel : nat) : list (Z * int) :=
+Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
+  (fix mkp (x : int)(fuel : nat) {struct fuel} : list (Z * int) :=
     match fuel with
       0 => nil
     | S p =>
       match bfs_find table x with
+      | None => nil
       | Some move =>
-        if move =? 1 then
-           let x' := compute_state_up x in
-             (1, x') :: mkp x p
-        else if move =? 2 then
-           let x' := compute_state_right x in
-             (1, x') :: mkp x p
-        else if move =? 3 then
-           let x' := compute_state_down x in
-             (1, x') :: mkp x p
-        else if move =? 4 then
-           let x' := compute_state_left x in
-             (1, x') :: mkp x p
+        if (move =? 1)%Z then
+           match compute_state_up x with
+           | Some x' => (1%Z, x') :: mkp x' p
+           | None => nil
+           end
+        else if (move =? 2)%Z then
+           match compute_state_right x with
+           | Some x' => (2%Z, x') :: mkp x' p
+           | None => nil
+           end
+        else if (move =? 3)%Z then
+           match compute_state_down x with
+           | Some x' => (3%Z, x') :: mkp x' p
+           | None => nil
+           end
+        else if (move =? 4)%Z then
+           match compute_state_left x with
+           | Some x' => (4%Z, x') :: mkp x' p
+           | None => nil
+           end
         else nil
       end
-    end x 16.
+    end) x 16%nat.
+
+Compute match cube_explore 1 with
+  | inr (l, _) => l
+  | _ => nil
+  end.
+
+Compute bfs_find all_solutions 62865408.
+Compute compute_state_left 62865408.
+Compute print_state 66977792.
+Compute bfs_find all_solutions 65274368.
+Compute print_state 65274368.
+Compute bfs_find all_solutions 53346569.
+Compute compute_state_up 53346569.
+Compute bfs_find all_solutions 27918601.
+
+Compute length furthest_positions.
+Compute List.map (fun p => get_cube (fst p)) furthest_positions.
+
+Definition positions13 :=
+  match cube_explore 13 with inl _ => nil | inr (l, _) => l end.
+
+Definition positions12 :=
+  match cube_explore 12 with inl _ => nil | inr (l, _) => l end.
+
+Definition positions11 :=
+  match cube_explore 11 with inl _ => nil | inr (l, _) => l end.
+
+Definition positions10 :=
+  match cube_explore 10 with inl _ => nil | inr (l, _) => l end.
+
+Definition positions9 :=
+  match cube_explore 9 with inl _ => nil | inr (l, _) => l end.
+
+Definition positions8 :=
+  match cube_explore 8 with inl _ => nil | inr (l, _) => l end.
+
+Definition positions7 :=
+  match cube_explore 7 with inl _ => nil | inr (l, _) => l end.
+
+Compute make_solution 53346569 all_solutions.
+
+Compute fold_right 
+  (fun (p : Z * int) (r : string) => 
+                        (match fst p with
+                        | 1%Z => "up"
+                        | 2%Z => "right"
+                        | 3%Z => "down"
+                        | 4%Z => "left"
+                        | _ => ""%string
+                        end ++
+                       string_return ++
+                       print_state (snd p) ++ 
+                       string_return ++ r)%string)
+    "AAA"%string (make_solution 53346569 all_solutions).
