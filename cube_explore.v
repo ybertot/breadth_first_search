@@ -504,24 +504,10 @@ Definition print_state s :=
 Compute get_positionY (nth 6 final_states 0).
 Compute print_position (get_position (nth 6 final_states 0)).
 
-Definition cube_explore (n : nat) : intmap.t Z + (list (int * Z) * intmap.t Z) :=
+Definition cube_explore (n : nat) :
+  intmap.t Z * Z + (list (int * Z) * intmap.t Z) :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
-    (map (fun i => (i, 0%Z)) final_states) empty.
-
-(*
-Time Compute match cube_explore 17 with inr _ => false | inl _ => true end.
-(* answer for 17 is true in 17s *)
-Time Compute match cube_explore 16 with inr _ => false | inl _ => true end.
-(* answer for 16 is true in 17s *)
-Time Compute match cube_explore 15 with inr _ => false | inl _ => true end.
-(* answer for 15 is false in 17s *)
-*)
-Definition furthest_positions :=
-  match cube_explore 14 with inl _ => nil | inr (l, _) => l end.
-
-Definition all_solutions := match cube_explore 16 with
-   inl t => t | _ => empty
-end.
+    (map (fun i => (i, 0%Z)) final_states) empty 0%Z.
 
 Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
   (fix mkp (x : int)(fuel : nat) {struct fuel} : list (Z * int) :=
@@ -559,7 +545,10 @@ Definition positions4 :=
   match cube_explore 4 with inl _ => nil | inr (l, _) => l end.
 Compute Z.of_nat (length positions4).
 
-Definition positions5 :=
+Definition table4 :=
+  match cube_explore 4 with inl _ => empty | inr (_, t) => t end.
+
+(* Definition positions5 :=
   match cube_explore 5 with inl _ => nil | inr (l, _) => l end.
 Compute Z.of_nat (length positions5).
 
@@ -575,15 +564,47 @@ Definition positions8 :=
   match cube_explore 8 with inl _ => nil | inr (l, _) => l end.
 Compute Z.of_nat(length positions8).
 
+*)
+
+Definition explore9 := cube_explore 9.
+
 Definition positions9 :=
-  match cube_explore 9 with inl _ => nil | inr (l, _) => l end.
+  match explore9 with inl _ => nil | inr (l, _) => l end.
 Compute Z.of_nat(length positions9).
 
 Definition table9 :=
-  match cube_explore 9 with inl _ => empty | inr (_, t) => t end.
+  match explore9 with inl _ => empty | inr (_, t) => t end.
 
-Compute head (filter (fun p : int * Z => if int_as_OT.eq_dec (get_cube (fst p)) 0 then true else false)
-                    positions9).
+
+Check table9.
+
+(* Bug? : the following command takes unreasonable time, when compared
+  to the definition with no type information.
+Definition table9 : intmap.t Z :=
+  match explore9 with inl _ => empty | inr (_, t) => t end.
+*)
+
+(* Bug? : the following commands takes very little time, but
+when replace table4 and positions4 with table 9 and positions4, the
+Check Z.of_nat (length 
+           (filter (fun p =>
+              if (get_cube (fst p)) =? 0 then 
+                 match bfs_find table4 (fst p) with
+                   Some _ => false | None => true end else false)
+                    positions4)).
+
+  time is increased drastically. *)
+
+(* It seems this should be an easy computation, if the table is already
+  computed, but it takes more time than computing table9 *)
+Time Compute
+ Z.of_nat (length 
+           (filter (fun p =>
+              if (get_cube (fst p)) =? 0 then 
+                 match bfs_find table9 (fst p) with
+                   Some _ => false | None => true end else false)
+                    positions9)).
+
 Compute print_state 116272.
 
 Check
@@ -597,6 +618,24 @@ Compute print_state 56279040.
 Compute print_state 64913408.
 Compute print_state 67043328.
 
-Check "Before computing the cardinal"%string.
-Time Compute intmap.cardinal all_solutions.
-Check "The cardinal has been computed"%string.
+Definition explore20 := cube_explore 20.
+
+Definition all_solutions := match explore20 with
+   inl (t, _) => t | _ => empty
+end.
+
+Definition explore18 := cube_explore 18.
+
+
+Check "computing whether 20 is enough"%string.
+
+Time Compute match explore20 with inl _ => true | inr _ => false end.
+
+Check "computing the number of needed rounds"%string.
+
+Compute match explore20 with inl(_, n) => n | inr _ => 0%Z end.
+
+(* this returns 19 *)
+
+
+
