@@ -1,4 +1,4 @@
-Require Import List.
+Require Import List ZArith.
 
 Section explore.
 
@@ -20,14 +20,15 @@ match w with
 | nil => (w2, settled)
 end.
 
-Fixpoint bfs (fuel : nat) (w : list (state * move)) (settled : state_fmap) :
-  state_fmap + (list (state * move) * state_fmap) :=
+Fixpoint bfs (fuel : nat) (w : list (state * move)) (settled : state_fmap) 
+  (round : Z) :
+  (state_fmap * Z) + (list (state * move) * state_fmap) :=
   match fuel with
   | 0 => inr (w, settled)
   | S p =>
     match bfs_aux w nil settled with
-    | (nil, s) => inl s
-    | (w, s) => bfs p w s
+    | (nil, s) => inl (s, round)
+    | (w, s) => bfs p w s (round + 1)%Z
     end
   end.
 
