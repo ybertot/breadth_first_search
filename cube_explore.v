@@ -523,15 +523,6 @@ Definition all_solutions := match cube_explore 16 with
    inl t => t | _ => empty
 end.
 
-Time Compute all_solutions.
-
-Compute intmap.cardinal all_solutions.
-
-(* Amazingly this definition takes a very long time to return, while it is
-   making the same computations as computations just before.
-Definition solution_map := Eval vm_compute in
-  match cube_explore 16 with inl v => v | _ => empty end. *)
-
 Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
   (fix mkp (x : int)(fuel : nat) {struct fuel} : list (Z * int) :=
     match fuel with
@@ -564,56 +555,48 @@ Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
       end
     end) x 16%nat.
 
-Compute match cube_explore 1 with
-  | inr (l, _) => l
-  | _ => nil
-  end.
+Definition positions4 :=
+  match cube_explore 4 with inl _ => nil | inr (l, _) => l end.
+Compute Z.of_nat (length positions4).
 
-Compute bfs_find all_solutions 62865408.
-Compute compute_state_left 62865408.
-Compute print_state 66977792.
-Compute bfs_find all_solutions 65274368.
-Compute print_state 65274368.
-Compute bfs_find all_solutions 53346569.
-Compute compute_state_up 53346569.
-Compute bfs_find all_solutions 27918601.
+Definition positions5 :=
+  match cube_explore 5 with inl _ => nil | inr (l, _) => l end.
+Compute Z.of_nat (length positions5).
 
-Compute length furthest_positions.
-Compute List.map (fun p => get_cube (fst p)) furthest_positions.
-
-Definition positions13 :=
-  match cube_explore 13 with inl _ => nil | inr (l, _) => l end.
-
-Definition positions12 :=
-  match cube_explore 12 with inl _ => nil | inr (l, _) => l end.
-
-Definition positions11 :=
-  match cube_explore 11 with inl _ => nil | inr (l, _) => l end.
-
-Definition positions10 :=
-  match cube_explore 10 with inl _ => nil | inr (l, _) => l end.
-
-Definition positions9 :=
-  match cube_explore 9 with inl _ => nil | inr (l, _) => l end.
-
-Definition positions8 :=
-  match cube_explore 8 with inl _ => nil | inr (l, _) => l end.
+Definition positions6 :=
+  match cube_explore 6 with inl _ => nil | inr (l, _) => l end.
+Compute Z.of_nat (length positions6).
 
 Definition positions7 :=
   match cube_explore 7 with inl _ => nil | inr (l, _) => l end.
+Compute Z.of_nat(length positions7).
 
-Compute make_solution 53346569 all_solutions.
+Definition positions8 :=
+  match cube_explore 8 with inl _ => nil | inr (l, _) => l end.
+Compute Z.of_nat(length positions8).
 
-Compute fold_right 
-  (fun (p : Z * int) (r : string) => 
-                        (match fst p with
-                        | 1%Z => "up"
-                        | 2%Z => "right"
-                        | 3%Z => "down"
-                        | 4%Z => "left"
-                        | _ => ""%string
-                        end ++
-                       string_return ++
-                       print_state (snd p) ++ 
-                       string_return ++ r)%string)
-    "AAA"%string (make_solution 53346569 all_solutions).
+Definition positions9 :=
+  match cube_explore 9 with inl _ => nil | inr (l, _) => l end.
+Compute Z.of_nat(length positions9).
+
+Definition table9 :=
+  match cube_explore 9 with inl _ => empty | inr (_, t) => t end.
+
+Compute head (filter (fun p : int * Z => if int_as_OT.eq_dec (get_cube (fst p)) 0 then true else false)
+                    positions9).
+Compute print_state 116272.
+
+Check
+  "computing a path from a term that should be solvable in 9 shots."%string. 
+Compute make_solution 116272 table9.
+Compute print_state 50736.
+Compute print_state 33867296.
+Compute print_state 50710016.
+Compute print_state 55165952.
+Compute print_state 56279040.
+Compute print_state 64913408.
+Compute print_state 67043328.
+
+Check "Before computing the cardinal"%string.
+Time Compute intmap.cardinal all_solutions.
+Check "The cardinal has been computed"%string.
