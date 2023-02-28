@@ -507,8 +507,8 @@ Compute print_position (get_position (nth 6 final_states 0)).
 Definition cube_explore (n : nat) : intmap.t Z + (list (int * Z) * intmap.t Z) :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
     (map (fun i => (i, 0%Z)) final_states) empty.
+
 (*
-Eval compute in match cube_explore 17 with inr _ => false | inl _ => true end.
 Time Compute match cube_explore 17 with inr _ => false | inl _ => true end.
 (* answer for 17 is true in 17s *)
 Time Compute match cube_explore 16 with inr _ => false | inl _ => true end.
@@ -523,7 +523,9 @@ Definition all_solutions := match cube_explore 16 with
    inl t => t | _ => empty
 end.
 
-Time Compute furthest_positions.
+Time Compute all_solutions.
+
+Compute intmap.cardinal all_solutions.
 
 (* Amazingly this definition takes a very long time to return, while it is
    making the same computations as computations just before.
