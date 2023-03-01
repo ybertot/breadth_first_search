@@ -48,7 +48,6 @@ Proof.
 now rewrite Z.compare_gt_iff.
 Qed.
 
-
 Locate Compare.
 Definition compare (x y : t) : OrderedType.Compare lt eq x y.
 destruct (to_Z x ?= to_Z y)%Z eqn:cmp.  
@@ -146,10 +145,6 @@ Fixpoint print_board_rec s n :=
 Definition print_board b := 
   append string_return (print_board_rec b nsize_board).
 
-(* Test *)
-Compute (print_board 34).
-Compute (print_board (get_board (set_board mask_all 9))).
-
 Definition mask_position := (((1 << size_position) - 1) << size_board2).
 Definition clean_position := mask_all lxor mask_position.
 Definition get_position s := (s land mask_position) >> size_board2.
@@ -177,17 +172,10 @@ Definition print_position p :=
   append (print_one_position (p land ((1 << (size_position / 2)) - 1)))
   (append ", " (print_one_position (p >> (size_position / 2)))).
 
-(* Test *)
-Compute let s := set_positionXY mask_all 2 1 in
-      (print_position (get_position s)).
-
 Definition mask_cube := (((1 << size_cube) - 1) << size_board2_position).
 Definition clean_cube := mask_all lxor mask_cube.
 Definition get_cube s := (s land mask_cube) >> size_board2_position.
 Definition set_cube s i := (s land clean_cube) lor (i << size_board2_position).
-
-(* Test *)
-Compute get_cube (set_cube mask_all 12).
 
 
 (* Cube
@@ -235,12 +223,6 @@ Definition print_cube c :=
    append (append (append (append (append
       string_return res1) res2) res3) res4) res5. 
 
-Compute print_cube (mask_cube >> size_board2_position).
-
-(* Test *)
-Compute let c := mk_cube 0 1 0 1 0 1 in
-  (get_d1 c, get_d2 c, get_d3 c, get_d4 c, get_d5 c, get_d6 c). 
-
 (* Rol Up 
        ---
        |6|
@@ -272,12 +254,6 @@ Definition roll_up c :=
 Definition roll_down c :=
   mk_cube (get_d3 c) (get_d2 c) (get_d6 c) (get_d1 c) (get_d5 c) (get_d4 c).
 
-(* Test *)
-Compute print_cube 13.
-Compute print_cube (roll_down 13).
-Compute print_cube (roll_up (roll_down 13)).
-Compute print_cube (roll_up (roll_up (roll_up (roll_up 13)))).
-
 (* Right
        ---
        |4|
@@ -308,13 +284,6 @@ Definition roll_right c :=
 Definition roll_left c :=
   mk_cube (get_d2 c) (get_d6 c) (get_d3 c) (get_d4 c) (get_d1 c) (get_d5 c).
 
-
-(* Test *)
-Compute print_cube 13.
-Compute print_cube (roll_left 13).
-Compute print_cube (roll_left (roll_right 13)).
-Compute print_cube (roll_right (roll_right (roll_right (roll_right 13)))).
-
 Fixpoint in_state s1 l := 
   match l with 
   | nil => false 
@@ -329,8 +298,6 @@ Fixpoint add_state s1 l :=
                   else s2 :: add_state s1 l1
   end.
 
-Compute (add_state 11 (add_state 10 (add_state 11 nil))).
-
 Definition swap_state s := 
   let c := get_cube s in
   let b := get_board s in 
@@ -344,9 +311,6 @@ Definition swap_state s :=
   set_board s1 b1.
 
 Definition s0 := set_cube (set_positionXY 0 1 2) ((1 << size_cube) - 1).
-
-Compute print_cube (get_cube (swap_state s0)).
-Compute print_board (get_board (swap_state s0)).
 
 Definition one_step s vls := 
   let px := get_positionX s in 
@@ -501,9 +465,6 @@ Definition print_state s :=
    match s with None => ""%string | Some s => print_state s end.
 
 
-Compute get_positionY (nth 6 final_states 0).
-Compute print_position (get_position (nth 6 final_states 0)).
-
 Definition cube_explore (n : nat) :
   intmap.t Z * Z + (list (int * Z) * intmap.t Z) :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
@@ -539,103 +500,68 @@ Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
            end
         else nil
       end
-    end) x 16%nat.
+    end) x 20%nat.
 
-Definition positions4 :=
-  match cube_explore 4 with inl _ => nil | inr (l, _) => l end.
-Compute Z.of_nat (length positions4).
+Definition new_ones (l : list (int * Z)) (table : intmap.t Z) : list (int * Z)
+   :=
+  filter (fun p => 
+            match bfs_find table (fst p) with Some _ => false | _ => true end)
+       l.
 
-Definition table4 :=
-  match cube_explore 4 with inl _ => empty | inr (_, t) => t end.
-
-(* Definition positions5 :=
-  match cube_explore 5 with inl _ => nil | inr (l, _) => l end.
-Compute Z.of_nat (length positions5).
-
-Definition positions6 :=
-  match cube_explore 6 with inl _ => nil | inr (l, _) => l end.
-Compute Z.of_nat (length positions6).
-
-Definition positions7 :=
-  match cube_explore 7 with inl _ => nil | inr (l, _) => l end.
-Compute Z.of_nat(length positions7).
-
-Definition positions8 :=
-  match cube_explore 8 with inl _ => nil | inr (l, _) => l end.
-Compute Z.of_nat(length positions8).
-
-*)
-
-Definition explore9 := cube_explore 9.
-
-Definition positions9 :=
-  match explore9 with inl _ => nil | inr (l, _) => l end.
-Compute Z.of_nat(length positions9).
-
-Definition table9 :=
-  match explore9 with inl _ => empty | inr (_, t) => t end.
-
-
-Check table9.
-
-(* Bug? : the following command takes unreasonable time, when compared
-  to the definition with no type information.
-Definition table9 : intmap.t Z :=
-  match explore9 with inl _ => empty | inr (_, t) => t end.
-*)
-
-(* Bug? : the following commands takes very little time, but
-when replace table4 and positions4 with table 9 and positions4, the
-Check Z.of_nat (length 
-           (filter (fun p =>
-              if (get_cube (fst p)) =? 0 then 
-                 match bfs_find table4 (fst p) with
-                   Some _ => false | None => true end else false)
-                    positions4)).
-
-  time is increased drastically. *)
-
-(* It seems this should be an easy computation, if the table is already
-  computed, but it takes more time than computing table9 *)
-Time Compute
- Z.of_nat (length 
-           (filter (fun p =>
-              if (get_cube (fst p)) =? 0 then 
-                 match bfs_find table9 (fst p) with
-                   Some _ => false | None => true end else false)
-                    positions9)).
-
-Compute print_state 116272.
-
-Check
-  "computing a path from a term that should be solvable in 9 shots."%string. 
-Compute make_solution 116272 table9.
-Compute print_state 50736.
-Compute print_state 33867296.
-Compute print_state 50710016.
-Compute print_state 55165952.
-Compute print_state 56279040.
-Compute print_state 64913408.
-Compute print_state 67043328.
-
-Definition explore20 := cube_explore 20.
-
-Definition all_solutions := match explore20 with
-   inl (t, _) => t | _ => empty
-end.
+Definition starting_positions (l : list (int * Z)) : list (int * Z) :=
+   filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
 
 Definition explore18 := cube_explore 18.
 
+Definition table18 :=
+  match explore18 with
+  | inl (t, z) => t | inr (l, t) => t end.
 
+Definition positions18 :=
+   match explore18 with
+   | inl _ => nil | inr(l, t) => l end.
+
+Definition explore19 : list (int * Z) * intmap.t Z :=
+   bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions18 nil table18.
+
+Definition table19 := snd explore19.
+
+Definition positions19 := fst explore19.
+
+Definition explore20 :=
+   bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions19 nil table19.
+
+Definition all_solutions : intmap.t Z := snd explore20.
+
+Check fun p => match bfs_find all_solutions (fst p) with Some _ => false | _ => true end.
+
+(* BUG? this Check takes way too much time. *)
+Fail Timeout 2 Check (@filter (int * Z) (fun p : int * Z => 
+            match bfs_find all_solutions (fst p) with Some _ => false | _ => true end)  positions18).
+
+Definition new18 := new_ones positions18 table18.
+
+(* Through a computation I don't want to repeat here, I know that 
+  new_ones positions18 table18 has 136 elements, which I deem to be
+  the position with longest solutions. This list contains (35033097, 2) and
+   (8425497, 2) *)
+
+(* There are no starting positions in positions18 *)
+
+(*
 Check "computing whether 20 is enough"%string.
 
-Time Compute match explore20 with inl _ => true | inr _ => false end.
+ Time Compute match explore20 with inl _ => true | inr _ => false end. *)
 
+(*
 Check "computing the number of needed rounds"%string.
 
-Compute match explore20 with inl(_, n) => n | inr _ => 0%Z end.
+ Compute match explore20 with inl(_, n) => n | inr _ => 0%Z end. *)
 
 (* this returns 19 *)
 
+Definition example18 (t : unit) :=
+   make_solution 35033097 all_solutions.
 
+Compute example18.
 
