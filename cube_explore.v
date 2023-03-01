@@ -444,8 +444,6 @@ Definition reverse_steps (s : int) : list (int * Z) :=
   compute_pre_state_right s ++
   compute_pre_state_up s.
 
-Check bfs int Z (intmap.t Z) bfs_find bfs_add reverse_steps.
-
 Definition full_cube := mk_cube 1 1 1 1 1 1.
 
 Definition final_states :=
@@ -511,15 +509,22 @@ Definition new_ones (l : list (int * Z)) (table : intmap.t Z) : list (int * Z)
 Definition starting_positions (l : list (int * Z)) : list (int * Z) :=
    filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
 
-Definition explore18 := cube_explore 18.
+Definition explore17 := cube_explore 17.
 
-Definition table18 :=
-  match explore18 with
+Definition table17 :=
+  match explore17 with
   | inl (t, z) => t | inr (l, t) => t end.
 
-Definition positions18 :=
-   match explore18 with
+Definition positions17 :=
+   match explore17 with
    | inl _ => nil | inr(l, t) => l end.
+
+Definition explore18 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions17 nil table17.
+
+Definition table18 := snd explore18.
+
+Definition positions18 := fst explore18.
 
 Definition explore19 : list (int * Z) * intmap.t Z :=
    bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions18 nil table18.
@@ -533,14 +538,21 @@ Definition explore20 :=
 
 Definition all_solutions : intmap.t Z := snd explore20.
 
+(*
 Check fun p => match bfs_find all_solutions (fst p) with Some _ => false | _ => true end.
 
 (* BUG? this Check takes way too much time. *)
 Fail Timeout 2 Check (@filter (int * Z) (fun p : int * Z => 
             match bfs_find all_solutions (fst p) with Some _ => false | _ => true end)  positions18).
+*)
 
-Definition new18 := new_ones positions18 table18.
+Definition new17 := new_ones positions17 table17.
+Definition starting17 := starting_positions new17.
 
+Check "before the first big computation"%string.
+Compute hd (0, 0%Z) starting17.
+
+Quit.
 (* Through a computation I don't want to repeat here, I know that 
   new_ones positions18 table18 has 136 elements, which I deem to be
   the position with longest solutions. This list contains (35033097, 2) and
