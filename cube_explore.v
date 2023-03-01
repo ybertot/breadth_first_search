@@ -549,10 +549,9 @@ Fail Timeout 2 Check (@filter (int * Z) (fun p : int * Z =>
 Definition new17 := new_ones positions17 table17.
 Definition starting17 := starting_positions new17.
 
-Check "before the first big computation"%string.
-Compute hd (0, 0%Z) starting17.
+(* Compute hd (0, 0%Z) starting17.
+118872 *)
 
-Quit.
 (* Through a computation I don't want to repeat here, I know that 
   new_ones positions18 table18 has 136 elements, which I deem to be
   the position with longest solutions. This list contains (35033097, 2) and
@@ -572,8 +571,31 @@ Check "computing the number of needed rounds"%string.
 
 (* this returns 19 *)
 
-Definition example18 (t : unit) :=
-   make_solution 35033097 all_solutions.
+Check "before the first big computation: the list of all positions
+       that need 17 moves to solve (no position requires 18 moves).
+       For each of these positions, the first move that will lead to
+       solution is given (1 for up, 2 for right, 3 for down, 4 for left)"%string.
+Time Compute starting17.
 
-Time Compute example18 tt.
+Check "this list has this number of elements"%string.
+Compute length starting17.
+Compute
+("This is an example of a sequence of moves solving the problem of
+  the first element of the previous list" ++
+print_state (fst (hd (0, 0%Z) starting17)) ++
+ string_return ++
+List.fold_right
+   (fun (p : Z * int) s =>
+     (match fst p with
+     | 1 => "up"
+     | 2 => "right"
+     | 3 => "down"
+     | 4 => "left"
+     | _ => ""
+     end)%Z ++
+     string_return ++
+     print_state (snd p) ++
+     string_return ++ s)
+     "" (make_solution (fst (hd (0, 0%Z) starting17))
+              all_solutions))%string.
 
