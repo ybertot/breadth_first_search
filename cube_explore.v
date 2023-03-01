@@ -563,5 +563,5 @@ Check "computing the number of needed rounds"%string.
 Definition example18 (t : unit) :=
    make_solution 35033097 all_solutions.
 
-Compute example18.
+Time Compute example18 tt.
 
