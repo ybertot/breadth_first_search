@@ -785,7 +785,7 @@ List.fold_right
      "" (make_solution (fst (hd (0, 0%Z) starting17))
               all_solutions))%string.
 
-Check "Now checking that there are now configuration that requires 18 steps"%string.
+Check "Now checking that there are no configuration that requires 18 steps"%string.
 
 Time Eval native_compute in
        starting_positions (new_ones positions18 table18).
