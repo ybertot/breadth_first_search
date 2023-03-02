@@ -550,8 +550,14 @@ Definition undup (l : list (int * Z)) :=
   match l with nil => nil | a :: tl => undup_aux a tl nil end.
 
 Definition explore20 := cube_explore 20.
+Definition number_of_rounds :=
+  match explore20 with inl(t, n) => n | inr _ => 0%Z end.
 
-Definition number_of_rounds := fst explore20.
-Definition all_solutions : intmap.t Z := snd explore20.
-Eval native_compute in number_of_rounds.
-Compute all_solutions.
+Check explore20.
+
+
+(* Bug? with the type information, this triggers the full computation. *)
+Definition all_solutions (* : intmap.t Z *) :=
+  match explore20 with inl(t, n) => t | inr _ => empty end.
+
+Eval native_compute in all_solutions.
