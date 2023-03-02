@@ -1,5 +1,27 @@
 Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
+Require Sorting.Mergesort Orders.
+
 Require Import bfs.
+
+Module intZle <: Orders.TotalLeBool'.
+
+Definition t := (int * Z)%type.
+
+Definition leb := 
+  fun x y : int * Z => PrimInt63.leb (fst x) (fst y).
+
+Lemma leb_total : forall x y : int * Z, leb x y = true \/ leb y x = true.
+Proof.
+intros x y; unfold leb; rewrite !leb_spec; apply Z.le_ge_cases.
+Qed.
+
+End intZle.
+
+Definition tlength {A : Type}(l : list A) :=
+  (fix f (l : list A) (acc : Z) : Z :=
+     match l with nil => acc | _ :: tl => f tl (acc + 1)%Z end) l 0%Z.
+
+Module msort := Mergesort.Sort intZle.
 
 Import ListNotations.
 
@@ -517,7 +539,17 @@ Definition table1 := snd explore1.
 
 Definition positions1 := fst explore1.
 
-Definition new1 := new_ones positions1 table1.
+Fixpoint undup_aux  (i : int * Z) (l acc : list (int * Z)) :=
+  match l with
+  | nil => i::acc
+  | a :: tl =>
+    if fst i =? fst a then undup_aux i tl acc else  undup_aux a tl (i :: acc)
+  end.
+
+Definition undup (l : list (int * Z)) :=
+  match l with nil => nil | a :: tl => undup_aux a tl nil end.
+
+Definition new1 := undup (msort.sort (new_ones positions1 table1)).
 
 Definition explore2 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new1 nil table1.
@@ -526,7 +558,7 @@ Definition table2 := snd explore2.
 
 Definition positions2 := fst explore2.
 
-Definition new2 := new_ones positions2 table2.
+Definition new2 := undup (msort.sort (new_ones positions2 table2)).
 
 Definition explore3 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new2 nil table2.
@@ -535,7 +567,7 @@ Definition table3 := snd explore3.
 
 Definition positions3 := fst explore3.
 
-Definition new3 := new_ones positions3 table3.
+Definition new3 := undup (msort.sort (new_ones positions3 table3)).
 
 Definition explore4 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new3 nil table3.
@@ -544,7 +576,7 @@ Definition table4 := snd explore4.
 
 Definition positions4 := fst explore4.
 
-Definition new4 := new_ones positions4 table4.
+Definition new4 := undup (msort.sort (new_ones positions4 table4)).
 
 Definition explore5 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new4 nil table4.
@@ -553,7 +585,7 @@ Definition table5 := snd explore5.
 
 Definition positions5 := fst explore5.
 
-Definition new5 := new_ones positions5 table5.
+Definition new5 := undup (msort.sort (new_ones positions5 table5)).
 
 Definition explore6 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new5 nil table5.
@@ -562,7 +594,7 @@ Definition table6 := snd explore6.
 
 Definition positions6 := fst explore6.
 
-Definition new6 := new_ones positions6 table6.
+Definition new6 := undup (msort.sort (new_ones positions6 table6)).
 
 Definition explore7 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new6 nil table6.
@@ -571,7 +603,7 @@ Definition table7 := snd explore7.
 
 Definition positions7 := fst explore7.
 
-Definition new7 := new_ones positions7 table7.
+Definition new7 := undup (msort.sort (new_ones positions7 table7)).
 
 Definition explore8 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new7 nil table7.
@@ -580,7 +612,7 @@ Definition table8 := snd explore8.
 
 Definition positions8 := fst explore8.
 
-Definition new8 := new_ones positions8 table8.
+Definition new8 := undup (msort.sort (new_ones positions8 table8)).
 
 Definition explore9 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new8 nil table8.
@@ -589,7 +621,7 @@ Definition table9 := snd explore9.
 
 Definition positions9 := fst explore9.
 
-Definition new9 := new_ones positions9 table9.
+Definition new9 := undup (msort.sort (new_ones positions9 table9)).
 
 Definition explore10 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new9 nil table9.
@@ -598,7 +630,7 @@ Definition table10 := snd explore10.
 
 Definition positions10 := fst explore10.
 
-Definition new10 := new_ones positions10 table10.
+Definition new10 := undup (msort.sort (new_ones positions10 table10)).
 
 Definition explore11 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new10 nil table10.
@@ -607,7 +639,7 @@ Definition table11 := snd explore11.
 
 Definition positions11 := fst explore11.
 
-Definition new11 := new_ones positions11 table11.
+Definition new11 := undup (msort.sort (new_ones positions11 table11)).
 
 Definition explore12 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new11 nil table11.
@@ -616,7 +648,7 @@ Definition table12 := snd explore12.
 
 Definition positions12 := fst explore12.
 
-Definition new12 := new_ones positions12 table12.
+Definition new12 := undup (msort.sort (new_ones positions12 table12)).
 
 Definition explore13 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new12 nil table12.
@@ -625,7 +657,7 @@ Definition table13 := snd explore13.
 
 Definition positions13 := fst explore13.
 
-Definition new13 := new_ones positions13 table13.
+Definition new13 := undup (msort.sort (new_ones positions13 table13)).
 
 Definition explore14 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new13 nil table13.
@@ -634,7 +666,7 @@ Definition table14 := snd explore14.
 
 Definition positions14 := fst explore14.
 
-Definition new14 := new_ones positions14 table14.
+Definition new14 := undup (msort.sort (new_ones positions14 table14)).
 
 Definition explore15 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new14 nil table14.
@@ -643,7 +675,7 @@ Definition table15 := snd explore15.
 
 Definition positions15 := fst explore15.
 
-Definition new15 := new_ones positions15 table15.
+Definition new15 := undup (msort.sort (new_ones positions15 table15)).
 
 Definition explore16 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new15 nil table15.
@@ -652,7 +684,7 @@ Definition table16 := snd explore16.
 
 Definition positions16 := fst explore16.
 
-Definition new16 := new_ones positions16 table16.
+Definition new16 := undup (msort.sort (new_ones positions16 table16)).
 
 Definition explore17 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new16 nil table16.
@@ -661,7 +693,7 @@ Definition table17 := snd explore17.
 
 Definition positions17 := fst explore17.
 
-Definition new17 := new_ones positions17 table17.
+Definition new17 := undup (msort.sort (new_ones positions17 table17)).
 
 Definition explore18 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new17 nil table17.
@@ -670,7 +702,7 @@ Definition table18 := snd explore18.
 
 Definition positions18 := fst explore18.
 
-Definition new18 := new_ones positions18 table18.
+Definition new18 := undup (msort.sort (new_ones positions18 table18)).
 
 Definition explore19 : list (int * Z) * intmap.t Z :=
    bfs_aux _ _ _ bfs_find bfs_add reverse_steps new18 nil table18.
@@ -679,7 +711,7 @@ Definition table19 := snd explore19.
 
 Definition positions19 := fst explore19.
 
-Definition new19 := new_ones positions19 table19.
+Definition new19 := undup (msort.sort (new_ones positions19 table19)).
 
 Definition explore20 :=
    bfs_aux _ _ _ bfs_find bfs_add reverse_steps new19 nil table19.
@@ -698,7 +730,7 @@ Fail Timeout 2 Check (@filter (int * Z) (fun p : int * Z =>
 118872 *)
 
 (* Through a computation I don't want to repeat here, I know that 
-  new_ones positions18 table18 has 136 elements, which I deem to be
+  undup (msort.sort (new_ones positions18 table18)) has 136 elements, which I deem to be
   the position with longest solutions. This list contains (35033097, 2) and
    (8425497, 2) *)
 
@@ -716,18 +748,10 @@ Check "computing the number of needed rounds"%string.
 
 (* this returns 19 *)
 
-Definition tlength {A : Type}(l : list A) :=
-  (fix f (l : list A) (acc : Z) : Z :=
-     match l with nil => acc | _ :: tl => f tl (acc + 1)%Z end) l 0%Z.
-
 Check "before the first big computation: the list of all positions
        that need 17 moves to solve (no position requires 18 moves).
        For each of these positions, the first move that will lead to
        solution is given (1 for up, 2 for right, 3 for down, 4 for left)"%string.
-
-Require Import Sorting.Mergesort Orders.
-Print TotalLeBool'.
-Module intle
 
 Definition all_explored_positions_count :=
   [tlength new1; tlength new2; tlength new3; tlength new4; tlength new5;
