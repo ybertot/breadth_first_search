@@ -509,32 +509,180 @@ Definition new_ones (l : list (int * Z)) (table : intmap.t Z) : list (int * Z)
 Definition starting_positions (l : list (int * Z)) : list (int * Z) :=
    filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
 
-Definition explore17 := cube_explore 17.
+Definition explore1 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps 
+    (map (fun i => (i, 0%Z)) final_states) nil empty.
 
-Definition table17 :=
-  match explore17 with
-  | inl (t, z) => t | inr (l, t) => t end.
+Definition table1 := snd explore1.
 
-Definition positions17 :=
-   match explore17 with
-   | inl _ => nil | inr(l, t) => l end.
+Definition positions1 := fst explore1.
+
+Definition new1 := new_ones positions1 table1.
+
+Definition explore2 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new1 nil table1.
+
+Definition table2 := snd explore2.
+
+Definition positions2 := fst explore2.
+
+Definition new2 := new_ones positions2 table2.
+
+Definition explore3 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new2 nil table2.
+
+Definition table3 := snd explore3.
+
+Definition positions3 := fst explore3.
+
+Definition new3 := new_ones positions3 table3.
+
+Definition explore4 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new3 nil table3.
+
+Definition table4 := snd explore4.
+
+Definition positions4 := fst explore4.
+
+Definition new4 := new_ones positions4 table4.
+
+Definition explore5 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new4 nil table4.
+
+Definition table5 := snd explore5.
+
+Definition positions5 := fst explore5.
+
+Definition new5 := new_ones positions5 table5.
+
+Definition explore6 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new5 nil table5.
+
+Definition table6 := snd explore6.
+
+Definition positions6 := fst explore6.
+
+Definition new6 := new_ones positions6 table6.
+
+Definition explore7 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new6 nil table6.
+
+Definition table7 := snd explore7.
+
+Definition positions7 := fst explore7.
+
+Definition new7 := new_ones positions7 table7.
+
+Definition explore8 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new7 nil table7.
+
+Definition table8 := snd explore8.
+
+Definition positions8 := fst explore8.
+
+Definition new8 := new_ones positions8 table8.
+
+Definition explore9 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new8 nil table8.
+
+Definition table9 := snd explore9.
+
+Definition positions9 := fst explore9.
+
+Definition new9 := new_ones positions9 table9.
+
+Definition explore10 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new9 nil table9.
+
+Definition table10 := snd explore10.
+
+Definition positions10 := fst explore10.
+
+Definition new10 := new_ones positions10 table10.
+
+Definition explore11 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new10 nil table10.
+
+Definition table11 := snd explore11.
+
+Definition positions11 := fst explore11.
+
+Definition new11 := new_ones positions11 table11.
+
+Definition explore12 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new11 nil table11.
+
+Definition table12 := snd explore12.
+
+Definition positions12 := fst explore12.
+
+Definition new12 := new_ones positions12 table12.
+
+Definition explore13 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new12 nil table12.
+
+Definition table13 := snd explore13.
+
+Definition positions13 := fst explore13.
+
+Definition new13 := new_ones positions13 table13.
+
+Definition explore14 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new13 nil table13.
+
+Definition table14 := snd explore14.
+
+Definition positions14 := fst explore14.
+
+Definition new14 := new_ones positions14 table14.
+
+Definition explore15 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new14 nil table14.
+
+Definition table15 := snd explore15.
+
+Definition positions15 := fst explore15.
+
+Definition new15 := new_ones positions15 table15.
+
+Definition explore16 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new15 nil table15.
+
+Definition table16 := snd explore16.
+
+Definition positions16 := fst explore16.
+
+Definition new16 := new_ones positions16 table16.
+
+Definition explore17 :=
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new16 nil table16.
+
+Definition table17 := snd explore17.
+
+Definition positions17 := fst explore17.
+
+Definition new17 := new_ones positions17 table17.
 
 Definition explore18 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions17 nil table17.
+  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new17 nil table17.
 
 Definition table18 := snd explore18.
 
 Definition positions18 := fst explore18.
 
+Definition new18 := new_ones positions18 table18.
+
 Definition explore19 : list (int * Z) * intmap.t Z :=
-   bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions18 nil table18.
+   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new18 nil table18.
 
 Definition table19 := snd explore19.
 
 Definition positions19 := fst explore19.
 
+Definition new19 := new_ones positions19 table19.
+
 Definition explore20 :=
-   bfs_aux _ _ _ bfs_find bfs_add reverse_steps positions19 nil table19.
+   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new19 nil table19.
 
 Definition all_solutions : intmap.t Z := snd explore20.
 
@@ -546,10 +694,7 @@ Fail Timeout 2 Check (@filter (int * Z) (fun p : int * Z =>
             match bfs_find all_solutions (fst p) with Some _ => false | _ => true end)  positions18).
 *)
 
-Definition new17 := new_ones positions17 table17.
-Definition starting17 := starting_positions new17.
-
-(* Compute hd (0, 0%Z) starting17.
+(* Eval native_compute in hd (0, 0%Z) starting17.
 118872 *)
 
 (* Through a computation I don't want to repeat here, I know that 
@@ -562,24 +707,65 @@ Definition starting17 := starting_positions new17.
 (*
 Check "computing whether 20 is enough"%string.
 
- Time Compute match explore20 with inl _ => true | inr _ => false end. *)
+ Time Eval native_compute in match explore20 with inl _ => true | inr _ => false end. *)
 
 (*
 Check "computing the number of needed rounds"%string.
 
- Compute match explore20 with inl(_, n) => n | inr _ => 0%Z end. *)
+ Eval native_compute in match explore20 with inl(_, n) => n | inr _ => 0%Z end. *)
 
 (* this returns 19 *)
+
+Definition tlength {A : Type}(l : list A) :=
+  (fix f (l : list A) (acc : Z) : Z :=
+     match l with nil => acc | _ :: tl => f tl (acc + 1)%Z end) l 0%Z.
 
 Check "before the first big computation: the list of all positions
        that need 17 moves to solve (no position requires 18 moves).
        For each of these positions, the first move that will lead to
        solution is given (1 for up, 2 for right, 3 for down, 4 for left)"%string.
-Time Compute starting17.
+
+Require Import Sorting.Mergesort Orders.
+Print TotalLeBool'.
+Module intle
+
+Definition all_explored_positions_count :=
+  [tlength new1; tlength new2; tlength new3; tlength new4; tlength new5;
+   tlength new6; tlength new7; tlength new8; tlength new9; tlength new10;
+   tlength new11; tlength new12; tlength new13; tlength new14; tlength new15;
+   tlength new16; tlength new17; tlength new18; tlength new19].
+
+Definition start1 := starting_positions new1.
+Definition start2 := starting_positions new2.
+Definition start3 := starting_positions new3.
+Definition start4 := starting_positions new4.
+Definition start5 := starting_positions new5.
+Definition start6 := starting_positions new6.
+Definition start7 := starting_positions new7.
+Definition start8 := starting_positions new8.
+Definition start9 := starting_positions new9.
+Definition start10 := starting_positions new10.
+Definition start11 := starting_positions new11.
+Definition start12 := starting_positions new12.
+Definition start13 := starting_positions new13.
+Definition start14 := starting_positions new14.
+Definition start15 := starting_positions new15.
+Definition start16 := starting_positions new16.
+Definition start17 := starting_positions new17.
+Definition start18 := starting_positions new18.
+Definition start19 := starting_positions new19.
+
+Definition solution_waves :=
+   [tlength start1; tlength start2; tlength start3; tlength start4;
+    tlength start5; tlength start6; tlength start7; tlength start8;
+    tlength start9; tlength start10; tlength start11; tlength start12;
+    tlength start13; tlength start14; tlength start15;
+    tlength start16; tlength start17; tlength start18; tlength start19].
+Eval native_compute in solution_waves.
+Eval native_compute in fold_right Z.add 0%Z solution_waves.
 
 Check "this list has this number of elements"%string.
-Compute length starting17.
-Compute
+Eval native_compute in
 ("This is an example of a sequence of moves solving the problem of
   the first element of the previous list" ++
 print_state (fst (hd (0, 0%Z) starting17)) ++
@@ -601,8 +787,8 @@ List.fold_right
 
 Check "Now checking that there are now configuration that requires 18 steps"%string.
 
-Time Compute
+Time Eval native_compute in
        starting_positions (new_ones positions18 table18).
 
 Check "no configuration that requires 19 steps"%string.
-Time Compute new_ones positions19 table19.
+Time Eval native_compute in new_ones positions19 table19.
