@@ -560,4 +560,4 @@ Check explore20.
 Definition all_solutions (* : intmap.t Z *) :=
   match explore20 with inl(t, n) => t | inr _ => empty end.
 
-Eval native_compute in all_solutions.
+Time Eval native_compute in match explore20 with inl(t, n) => n | inr _ => 0%Z end.
