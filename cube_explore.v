@@ -1,8 +1,12 @@
 Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
 Require Sorting.Mergesort Orders.
+Import ListNotations.
 
 Require Import bfs.
 
+(* Preparatory work to use the predefined module for merge sort. *)
+(* Note that Orders is not imported, because some of its defined *)
+(* names clash with OrderedType.                                 *)
 Module intZle <: Orders.TotalLeBool'.
 
 Definition t := (int * Z)%type.
@@ -17,13 +21,19 @@ Qed.
 
 End intZle.
 
+Module msort := Mergesort.Sort intZle.
+
+(* We are going to generated huge lists of integers, for which  *)
+(* the default length function provided in the list module is   *)
+(* inadequate.  We reimplement a length function that computes  *)
+(* in a tail recursive fashion, and produced a number of        *)
+(* type Z.                                                      *)
 Definition tlength {A : Type}(l : list A) :=
   (fix f (l : list A) (acc : Z) : Z :=
      match l with nil => acc | _ :: tl => f tl (acc + 1)%Z end) l 0%Z.
 
-Module msort := Mergesort.Sort intZle.
-
-Import ListNotations.
+(* Preparatory work to use the predefined module for AVL        *)
+(* tables.                                                      *)
 
 Module int_as_OT <: UsualOrderedType.
 
@@ -70,7 +80,6 @@ Proof.
 now rewrite Z.compare_gt_iff.
 Qed.
 
-Locate Compare.
 Definition compare (x y : t) : OrderedType.Compare lt eq x y.
 destruct (to_Z x ?= to_Z y)%Z eqn:cmp.  
 - apply OrderedType.EQ.
@@ -102,12 +111,12 @@ Defined.
 
 End int_as_OT.
 
-Locate Make.
 Module intmap := FMapAVL.Make int_as_OT.
 
 Arguments intmap.find _ (_)%uint63 _.
 Arguments intmap.add _ (_)%uint63 _ _.
 
+(* Preparatory work to use the bfs and bfs_aux functions        *)
 Definition empty : intmap.t Z := intmap.empty _.
 
 Definition bfs_find : intmap.t Z -> int -> option Z :=
@@ -360,7 +369,8 @@ Definition one_step s vls :=
       (s1 :: r3, add_state s1 vls3) in
   (r4, vls4).
 
-Definition compute_state_up s : option int :=
+(* The specific functions to compute the effect of one move.    *)
+Definition state_up s : option int :=
   let py := get_positionY s in
   if py =? 0 then None
   else 
@@ -371,7 +381,7 @@ Definition compute_state_up s : option int :=
     let s2 := set_cube s1 c1 in
      Some (swap_state s2).
 
-Definition compute_state_down s : option int :=
+Definition state_down s : option int :=
   let py := get_positionY s in
   if py =? size_board - 1 then None
   else 
@@ -382,7 +392,7 @@ Definition compute_state_down s : option int :=
     let s2 := set_cube s1 c1 in
      Some (swap_state s2).
 
-Definition compute_state_left s : option int :=
+Definition state_left s : option int :=
   let px := get_positionX s in
   if px =? 0 then None
   else 
@@ -393,7 +403,7 @@ Definition compute_state_left s : option int :=
     let s2 := set_cube s1 c1 in
      Some (swap_state s2).
 
-Definition compute_state_right s : option int :=
+Definition state_right s : option int :=
   let px := get_positionX s in
   if px =? size_board - 1 then None
   else 
@@ -404,56 +414,59 @@ Definition compute_state_right s : option int :=
     let s2 := set_cube s1 c1 in
      Some (swap_state s2).
 
-Definition compute_pre_state_up s : list (int * Z):=
-match compute_state_up s with
+(* The specific function to compute the reverse step of each    *)
+(* move.                                                        *)
+
+Definition pre_state_up s : list (int * Z):=
+match state_up s with
 | None => nil
 | Some s1 =>
-  match compute_state_down s1 with
+  match state_down s1 with
   | None => nil
   | Some s2 =>
-    match compute_state_up s2 with
+    match state_up s2 with
     | None => nil
     | Some s3 => [(s3, 3%Z)]
     end
   end
 end.
 
-Definition compute_pre_state_right s :=
-match compute_state_right s with
+Definition pre_state_right s :=
+match state_right s with
 | None => nil
 | Some s1 =>
-  match compute_state_left s1 with
+  match state_left s1 with
   | None => nil
   | Some s2 =>
-    match compute_state_right s2 with
+    match state_right s2 with
     | None => nil
     | Some s3 => [(s3, 4%Z)]
     end
   end
 end.
 
-Definition compute_pre_state_down s :=
-match compute_state_down s with
+Definition pre_state_down s :=
+match state_down s with
 | None => nil
 | Some s1 =>
-  match compute_state_up s1 with
+  match state_up s1 with
   | None => nil
   | Some s2 =>
-    match compute_state_down s2 with
+    match state_down s2 with
     | None => nil
     | Some s3 => [(s3, 1%Z)]
     end
   end
 end.
 
-Definition compute_pre_state_left s :=
-match compute_state_left s with
+Definition pre_state_left s :=
+match state_left s with
 | None => nil
 | Some s1 =>
-  match compute_state_right s1 with
+  match state_right s1 with
   | None => nil
   | Some s2 =>
-    match compute_state_left s2 with
+    match state_left s2 with
     | None => nil
     | Some s3 => [(s3, 2%Z)]
     end
@@ -461,10 +474,7 @@ match compute_state_left s with
 end.
 
 Definition reverse_steps (s : int) : list (int * Z) :=
-  compute_pre_state_left s ++
-  compute_pre_state_down s ++
-  compute_pre_state_right s ++
-  compute_pre_state_up s.
+  pre_state_left s ++ pre_state_down s ++ pre_state_right s ++ pre_state_up s.
 
 Definition full_cube := mk_cube 1 1 1 1 1 1.
 
@@ -484,9 +494,23 @@ Definition print_state s :=
  Definition print_opt_state s :=
    match s with None => ""%string | Some s => print_state s end.
 
-
+(* The big computation of full bread first seach, where the     *)
+(* number of iterations is limited by fuel.                     *)
+(* - the result should be understood as follows:                *)
+(*  * when the result is inl(t, k), t is the final table and k  *)
+(*    is the minimal number of rounds to obtain it.             *)
+(*  * when the result is inr(l, t), l is the current list of    *)
+(*    positions that are predecessors of position that were     *)
+(*    introduced at the last round,                             *)
+(*    t is the table containing all positions that have already *)
+(*    been processed.                                           *)
+(*    When the result has the inr form, the list may have       *)
+(*    duplicates and elements already present in t.             *)
+(*    when the result has the inf form, the number of rounds    *)
+(*    is 2 + the round number of the round index where the last *)
+(*    element was added to table.                               *)
 Definition cube_explore (n : nat) :
-  intmap.t Z * Z + (list (int * Z) * intmap.t Z) :=
+  intmap.t Z * Z + list (int * Z) * intmap.t Z :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
     (map (fun i => (i, 0%Z)) final_states) empty 0%Z.
 
@@ -499,22 +523,22 @@ Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
       | None => nil
       | Some move =>
         if (move =? 1)%Z then
-           match compute_state_up x with
+           match state_up x with
            | Some x' => (1%Z, x') :: mkp x' p
            | None => nil
            end
         else if (move =? 2)%Z then
-           match compute_state_right x with
+           match state_right x with
            | Some x' => (2%Z, x') :: mkp x' p
            | None => nil
            end
         else if (move =? 3)%Z then
-           match compute_state_down x with
+           match state_down x with
            | Some x' => (3%Z, x') :: mkp x' p
            | None => nil
            end
         else if (move =? 4)%Z then
-           match compute_state_left x with
+           match state_left x with
            | Some x' => (4%Z, x') :: mkp x' p
            | None => nil
            end
@@ -748,11 +772,6 @@ Check "computing the number of needed rounds"%string.
 
 (* this returns 19 *)
 
-Check "before the first big computation: the list of all positions
-       that need 17 moves to solve (no position requires 18 moves).
-       For each of these positions, the first move that will lead to
-       solution is given (1 for up, 2 for right, 3 for down, 4 for left)"%string.
-
 Definition all_explored_positions_count :=
   [tlength new1; tlength new2; tlength new3; tlength new4; tlength new5;
    tlength new6; tlength new7; tlength new8; tlength new9; tlength new10;
@@ -785,34 +804,3 @@ Definition solution_waves :=
     tlength start9; tlength start10; tlength start11; tlength start12;
     tlength start13; tlength start14; tlength start15;
     tlength start16; tlength start17; tlength start18; tlength start19].
-Eval native_compute in solution_waves.
-Eval native_compute in fold_right Z.add 0%Z solution_waves.
-
-Check "this list has this number of elements"%string.
-Eval native_compute in
-("This is an example of a sequence of moves solving the problem of
-  the first element of the previous list" ++
-print_state (fst (hd (0, 0%Z) starting17)) ++
- string_return ++
-List.fold_right
-   (fun (p : Z * int) s =>
-     (match fst p with
-     | 1 => "up"
-     | 2 => "right"
-     | 3 => "down"
-     | 4 => "left"
-     | _ => ""
-     end)%Z ++
-     string_return ++
-     print_state (snd p) ++
-     string_return ++ s)
-     "" (make_solution (fst (hd (0, 0%Z) starting17))
-              all_solutions))%string.
-
-Check "Now checking that there are no configuration that requires 18 steps"%string.
-
-Time Eval native_compute in
-       starting_positions (new_ones positions18 table18).
-
-Check "no configuration that requires 19 steps"%string.
-Time Eval native_compute in new_ones positions19 table19.
