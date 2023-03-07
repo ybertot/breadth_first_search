@@ -31,3 +31,9 @@ lia.cache
 nia.cache
 nlia.cache
 nra.cache
+.*~
+all_positions.*
+cube.data
+cube_solver
+cube_table_maker
+fast_cube_solver
