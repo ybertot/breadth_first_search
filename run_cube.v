@@ -8,4 +8,8 @@ Time Compute make_solution 0x0620E
 
 Then the computation is unreasonably long. *)
 Time Compute make_solution 0x0620E all_positions.
-(* This one still takes 10 mn? *)
+(* This one still takes 8 mn? *)
+
+(* The next computation takes not time, because all_positions is already
+  memorized. *)
+Time Compute make_solution 0xF0C63 all_positions.
