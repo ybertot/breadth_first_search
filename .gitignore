@@ -37,3 +37,5 @@ cube.data
 cube_solver
 cube_table_maker
 fast_cube_solver
+CoqMakefile
+CoqMakefile.conf
