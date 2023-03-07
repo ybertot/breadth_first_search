@@ -555,6 +555,7 @@ Definition new_ones (l : list (int * Z)) (table : intmap.t Z) : list (int * Z)
 Definition starting_positions (l : list (int * Z)) : list (int * Z) :=
    filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
 
+(*
 Definition explore1 :=
   bfs_aux _ _ _ bfs_find bfs_add reverse_steps 
     (map (fun i => (i, 0%Z)) final_states) nil empty.
@@ -804,3 +805,4 @@ Definition solution_waves :=
     tlength start9; tlength start10; tlength start11; tlength start12;
     tlength start13; tlength start14; tlength start15;
     tlength start16; tlength start17; tlength start18; tlength start19].
+*)
