@@ -1,4 +1,5 @@
 Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
+Require Export PArray.
 Require Sorting.Mergesort Orders.
 Import ListNotations.
 
@@ -555,7 +556,35 @@ Definition new_ones (l : list (int * int)) (table : intmap.t int) :
 
 Definition starting_positions (l : list (int * int)) : list (int * int) :=
    filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
+Print intmap.Raw.
+Definition result3 := cube_explore 3.
+Definition positions3 := match result3 with inl(t, _) => t | inr(_, t) => t end.
+
+Definition short := intmap.Raw.enumeration.
+
+Definition esize_more {T : Type} (e : intmap.Raw.enumeration T)
+  (cont : short T -> int -> int)
+  (acc : int) : int :=
+  match e with
+     intmap.Raw.End _ => 0
+  | intmap.Raw.More k v t e' => (cont (intmap.Raw.cons t e') (1 + acc))
+  end.
+  
+Fixpoint size_cont {T : Type} (t : intmap.Raw.tree T)
+         (cont : int -> int) (acc : int) : int :=
+  match t with
+  | intmap.Raw.Leaf _ => cont acc
+  | intmap.Raw.Node l1 x1 d1 r1 _ =>
+    size_cont l1 (size_cont r1 cont) (1 + acc)
+  end.
+
+Definition size {T : Type} (table : intmap.t T) :=
+   size_cont (intmap.this table) (fun x => x) 0.
+
+Definition table_to_array (table : intmap.t int) :=
+   PArray.make (size table) 0.
 
 Definition result20 := cube_explore 20.
+
 
 Definition all_positions := match result20 with inl(t, _) => t | _ => empty end.
