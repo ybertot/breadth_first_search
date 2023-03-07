@@ -1,14 +1,5 @@
 open All_positions
-
-let rec print_solution = function
-  [] -> print_string "\n"
-| (d, _) :: tl -> print_string
-    (match d with
-     | Zpos XH -> "up\n"
-     | Zpos (XO XH) -> "right\n"
-     | Zpos (XI XH) -> "down\n"
-     | Zpos (XO (XO XH)) -> "left\n"
-     | _ -> ""); print_solution tl;;
+open Print_solution
 
 let all_solutions = 
   match cube_explore (S (S (S (S (S (S (S (S (S (S 

@@ -9,12 +9,12 @@ Require Import bfs.
 (* names clash with OrderedType.                                 *)
 Module intZle <: Orders.TotalLeBool'.
 
-Definition t := (int * Z)%type.
+Definition t := (int * int)%type.
 
 Definition leb := 
-  fun x y : int * Z => PrimInt63.leb (fst x) (fst y).
+  fun x y : int * int => PrimInt63.leb (fst x) (fst y).
 
-Lemma leb_total : forall x y : int * Z, leb x y = true \/ leb y x = true.
+Lemma leb_total : forall x y : int * int, leb x y = true \/ leb y x = true.
 Proof.
 intros x y; unfold leb; rewrite !leb_spec; apply Z.le_ge_cases.
 Qed.
@@ -117,12 +117,12 @@ Arguments intmap.find _ (_)%uint63 _.
 Arguments intmap.add _ (_)%uint63 _ _.
 
 (* Preparatory work to use the bfs and bfs_aux functions        *)
-Definition empty : intmap.t Z := intmap.empty _.
+Definition empty : intmap.t int := intmap.empty _.
 
-Definition bfs_find : intmap.t Z -> int -> option Z :=
+Definition bfs_find : intmap.t int -> int -> option int :=
   fun m k => intmap.find k m.
 
-Definition bfs_add : intmap.t Z -> int -> Z -> intmap.t Z :=
+Definition bfs_add : intmap.t int -> int -> int -> intmap.t int :=
   fun m k v => intmap.add k v m.
 
 (* The following code is taken from Laurent Thery : puzzle_cube repository *)
@@ -417,7 +417,7 @@ Definition state_right s : option int :=
 (* The specific function to compute the reverse step of each    *)
 (* move.                                                        *)
 
-Definition pre_state_up s : list (int * Z):=
+Definition pre_state_up s : list (int * int):=
 match state_up s with
 | None => nil
 | Some s1 =>
@@ -426,7 +426,7 @@ match state_up s with
   | Some s2 =>
     match state_up s2 with
     | None => nil
-    | Some s3 => [(s3, 3%Z)]
+    | Some s3 => [(s3, 3)]
     end
   end
 end.
@@ -440,7 +440,7 @@ match state_right s with
   | Some s2 =>
     match state_right s2 with
     | None => nil
-    | Some s3 => [(s3, 4%Z)]
+    | Some s3 => [(s3, 4)]
     end
   end
 end.
@@ -454,7 +454,7 @@ match state_down s with
   | Some s2 =>
     match state_down s2 with
     | None => nil
-    | Some s3 => [(s3, 1%Z)]
+    | Some s3 => [(s3, 1)]
     end
   end
 end.
@@ -468,12 +468,12 @@ match state_left s with
   | Some s2 =>
     match state_left s2 with
     | None => nil
-    | Some s3 => [(s3, 2%Z)]
+    | Some s3 => [(s3, 2)]
     end
   end
 end.
 
-Definition reverse_steps (s : int) : list (int * Z) :=
+Definition reverse_steps (s : int) : list (int * int) :=
   pre_state_left s ++ pre_state_down s ++ pre_state_right s ++ pre_state_up s.
 
 Definition full_cube := mk_cube 1 1 1 1 1 1.
@@ -510,299 +510,52 @@ Definition print_state s :=
 (*    is 2 + the round number of the round index where the last *)
 (*    element was added to table.                               *)
 Definition cube_explore (n : nat) :
-  intmap.t Z * Z + list (int * Z) * intmap.t Z :=
+  intmap.t int * Z + list (int * int) * intmap.t int :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
-    (map (fun i => (i, 0%Z)) final_states) empty 0%Z.
+    (map (fun i => (i, 0)) final_states) empty 0.
 
-Definition make_solution (x : int) (table : intmap.t Z) : list (Z * int) :=
-  (fix mkp (x : int)(fuel : nat) {struct fuel} : list (Z * int) :=
+Definition make_solution (x : int) (table : intmap.t int) : list (int * int) :=
+  (fix mkp (x : int)(fuel : nat) {struct fuel} : list (int * int) :=
     match fuel with
       0 => nil
     | S p =>
       match bfs_find table x with
       | None => nil
       | Some move =>
-        if (move =? 1)%Z then
+        if move =? 1 then
            match state_up x with
-           | Some x' => (1%Z, x') :: mkp x' p
+           | Some x' => (1, x') :: mkp x' p
            | None => nil
            end
-        else if (move =? 2)%Z then
+        else if move =? 2 then
            match state_right x with
-           | Some x' => (2%Z, x') :: mkp x' p
+           | Some x' => (2, x') :: mkp x' p
            | None => nil
            end
-        else if (move =? 3)%Z then
+        else if move =? 3 then
            match state_down x with
-           | Some x' => (3%Z, x') :: mkp x' p
+           | Some x' => (3, x') :: mkp x' p
            | None => nil
            end
-        else if (move =? 4)%Z then
+        else if move =? 4 then
            match state_left x with
-           | Some x' => (4%Z, x') :: mkp x' p
+           | Some x' => (4, x') :: mkp x' p
            | None => nil
            end
         else nil
       end
     end) x 20%nat.
 
-Definition new_ones (l : list (int * Z)) (table : intmap.t Z) : list (int * Z)
+Definition new_ones (l : list (int * int)) (table : intmap.t int) :
+   list (int * int)
    :=
   filter (fun p => 
             match bfs_find table (fst p) with Some _ => false | _ => true end)
        l.
 
-Definition starting_positions (l : list (int * Z)) : list (int * Z) :=
+Definition starting_positions (l : list (int * int)) : list (int * int) :=
    filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
 
-(*
-Definition explore1 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps 
-    (map (fun i => (i, 0%Z)) final_states) nil empty.
+Definition result20 := cube_explore 20.
 
-Definition table1 := snd explore1.
-
-Definition positions1 := fst explore1.
-
-Fixpoint undup_aux  (i : int * Z) (l acc : list (int * Z)) :=
-  match l with
-  | nil => i::acc
-  | a :: tl =>
-    if fst i =? fst a then undup_aux i tl acc else  undup_aux a tl (i :: acc)
-  end.
-
-Definition undup (l : list (int * Z)) :=
-  match l with nil => nil | a :: tl => undup_aux a tl nil end.
-
-Definition new1 := undup (msort.sort (new_ones positions1 table1)).
-
-Definition explore2 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new1 nil table1.
-
-Definition table2 := snd explore2.
-
-Definition positions2 := fst explore2.
-
-Definition new2 := undup (msort.sort (new_ones positions2 table2)).
-
-Definition explore3 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new2 nil table2.
-
-Definition table3 := snd explore3.
-
-Definition positions3 := fst explore3.
-
-Definition new3 := undup (msort.sort (new_ones positions3 table3)).
-
-Definition explore4 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new3 nil table3.
-
-Definition table4 := snd explore4.
-
-Definition positions4 := fst explore4.
-
-Definition new4 := undup (msort.sort (new_ones positions4 table4)).
-
-Definition explore5 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new4 nil table4.
-
-Definition table5 := snd explore5.
-
-Definition positions5 := fst explore5.
-
-Definition new5 := undup (msort.sort (new_ones positions5 table5)).
-
-Definition explore6 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new5 nil table5.
-
-Definition table6 := snd explore6.
-
-Definition positions6 := fst explore6.
-
-Definition new6 := undup (msort.sort (new_ones positions6 table6)).
-
-Definition explore7 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new6 nil table6.
-
-Definition table7 := snd explore7.
-
-Definition positions7 := fst explore7.
-
-Definition new7 := undup (msort.sort (new_ones positions7 table7)).
-
-Definition explore8 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new7 nil table7.
-
-Definition table8 := snd explore8.
-
-Definition positions8 := fst explore8.
-
-Definition new8 := undup (msort.sort (new_ones positions8 table8)).
-
-Definition explore9 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new8 nil table8.
-
-Definition table9 := snd explore9.
-
-Definition positions9 := fst explore9.
-
-Definition new9 := undup (msort.sort (new_ones positions9 table9)).
-
-Definition explore10 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new9 nil table9.
-
-Definition table10 := snd explore10.
-
-Definition positions10 := fst explore10.
-
-Definition new10 := undup (msort.sort (new_ones positions10 table10)).
-
-Definition explore11 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new10 nil table10.
-
-Definition table11 := snd explore11.
-
-Definition positions11 := fst explore11.
-
-Definition new11 := undup (msort.sort (new_ones positions11 table11)).
-
-Definition explore12 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new11 nil table11.
-
-Definition table12 := snd explore12.
-
-Definition positions12 := fst explore12.
-
-Definition new12 := undup (msort.sort (new_ones positions12 table12)).
-
-Definition explore13 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new12 nil table12.
-
-Definition table13 := snd explore13.
-
-Definition positions13 := fst explore13.
-
-Definition new13 := undup (msort.sort (new_ones positions13 table13)).
-
-Definition explore14 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new13 nil table13.
-
-Definition table14 := snd explore14.
-
-Definition positions14 := fst explore14.
-
-Definition new14 := undup (msort.sort (new_ones positions14 table14)).
-
-Definition explore15 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new14 nil table14.
-
-Definition table15 := snd explore15.
-
-Definition positions15 := fst explore15.
-
-Definition new15 := undup (msort.sort (new_ones positions15 table15)).
-
-Definition explore16 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new15 nil table15.
-
-Definition table16 := snd explore16.
-
-Definition positions16 := fst explore16.
-
-Definition new16 := undup (msort.sort (new_ones positions16 table16)).
-
-Definition explore17 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new16 nil table16.
-
-Definition table17 := snd explore17.
-
-Definition positions17 := fst explore17.
-
-Definition new17 := undup (msort.sort (new_ones positions17 table17)).
-
-Definition explore18 :=
-  bfs_aux _ _ _ bfs_find bfs_add reverse_steps new17 nil table17.
-
-Definition table18 := snd explore18.
-
-Definition positions18 := fst explore18.
-
-Definition new18 := undup (msort.sort (new_ones positions18 table18)).
-
-Definition explore19 : list (int * Z) * intmap.t Z :=
-   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new18 nil table18.
-
-Definition table19 := snd explore19.
-
-Definition positions19 := fst explore19.
-
-Definition new19 := undup (msort.sort (new_ones positions19 table19)).
-
-Definition explore20 :=
-   bfs_aux _ _ _ bfs_find bfs_add reverse_steps new19 nil table19.
-
-Definition all_solutions : intmap.t Z := snd explore20.
-
-(*
-Check fun p => match bfs_find all_solutions (fst p) with Some _ => false | _ => true end.
-
-(* BUG? this Check takes way too much time. *)
-Fail Timeout 2 Check (@filter (int * Z) (fun p : int * Z => 
-            match bfs_find all_solutions (fst p) with Some _ => false | _ => true end)  positions18).
-*)
-
-(* Eval native_compute in hd (0, 0%Z) starting17.
-118872 *)
-
-(* Through a computation I don't want to repeat here, I know that 
-  undup (msort.sort (new_ones positions18 table18)) has 136 elements, which I deem to be
-  the position with longest solutions. This list contains (35033097, 2) and
-   (8425497, 2) *)
-
-(* There are no starting positions in positions18 *)
-
-(*
-Check "computing whether 20 is enough"%string.
-
- Time Eval native_compute in match explore20 with inl _ => true | inr _ => false end. *)
-
-(*
-Check "computing the number of needed rounds"%string.
-
- Eval native_compute in match explore20 with inl(_, n) => n | inr _ => 0%Z end. *)
-
-(* this returns 19 *)
-
-Definition all_explored_positions_count :=
-  [tlength new1; tlength new2; tlength new3; tlength new4; tlength new5;
-   tlength new6; tlength new7; tlength new8; tlength new9; tlength new10;
-   tlength new11; tlength new12; tlength new13; tlength new14; tlength new15;
-   tlength new16; tlength new17; tlength new18; tlength new19].
-
-Definition start1 := starting_positions new1.
-Definition start2 := starting_positions new2.
-Definition start3 := starting_positions new3.
-Definition start4 := starting_positions new4.
-Definition start5 := starting_positions new5.
-Definition start6 := starting_positions new6.
-Definition start7 := starting_positions new7.
-Definition start8 := starting_positions new8.
-Definition start9 := starting_positions new9.
-Definition start10 := starting_positions new10.
-Definition start11 := starting_positions new11.
-Definition start12 := starting_positions new12.
-Definition start13 := starting_positions new13.
-Definition start14 := starting_positions new14.
-Definition start15 := starting_positions new15.
-Definition start16 := starting_positions new16.
-Definition start17 := starting_positions new17.
-Definition start18 := starting_positions new18.
-Definition start19 := starting_positions new19.
-
-Definition solution_waves :=
-   [tlength start1; tlength start2; tlength start3; tlength start4;
-    tlength start5; tlength start6; tlength start7; tlength start8;
-    tlength start9; tlength start10; tlength start11; tlength start12;
-    tlength start13; tlength start14; tlength start15;
-    tlength start16; tlength start17; tlength start18; tlength start19].
-*)
+Definition all_positions := match result20 with inl(t, _) => t | _ => empty end.
