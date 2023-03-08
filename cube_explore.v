@@ -515,12 +515,13 @@ Definition cube_explore (n : nat) :
   bfs _ _ _ bfs_find bfs_add reverse_steps n
     (map (fun i => (i, 0)) final_states) empty 0.
 
-Definition make_solution (x : int) (table : intmap.t int) : list (int * int) :=
+Definition make_solution_generic {T : Type} (find : T -> int -> option int) (x : int)
+   (table : T) : list (int * int) :=
   (fix mkp (x : int)(fuel : nat) {struct fuel} : list (int * int) :=
     match fuel with
       0 => nil
     | S p =>
-      match bfs_find table x with
+      match find table x with
       | None => nil
       | Some move =>
         if move =? 1 then
@@ -547,6 +548,9 @@ Definition make_solution (x : int) (table : intmap.t int) : list (int * int) :=
       end
     end) x 20%nat.
 
+Definition make_solution (x : int) (table : intmap.t int) : list (int * int) :=
+  make_solution_generic bfs_find x table.
+
 Definition new_ones (l : list (int * int)) (table : intmap.t int) :
    list (int * int)
    :=
@@ -556,7 +560,7 @@ Definition new_ones (l : list (int * int)) (table : intmap.t int) :
 
 Definition starting_positions (l : list (int * int)) : list (int * int) :=
    filter (fun p => PrimInt63.eqb (get_cube (fst p)) 0) l.
-Print intmap.Raw.
+
 Definition result3 := cube_explore 3.
 Definition positions3 := match result3 with inl(t, _) => t | inr(_, t) => t end.
 
@@ -581,10 +585,67 @@ Fixpoint size_cont {T : Type} (t : intmap.Raw.tree T)
 Definition size {T : Type} (table : intmap.t T) :=
    size_cont (intmap.this table) (fun x => x) 0.
 
-Definition table_to_array (table : intmap.t int) :=
-   PArray.make (size table) 0.
+Definition combine' (position move : int) :=
+  (position << 3) lor (move land (1 << 4 - 1)).
+
+Fixpoint table_to_array_cont (t : intmap.Raw.tree int)
+  (cont : int -> array int -> array int) (rank : int) (a : array int) :=
+  match t with
+  | intmap.Raw.Leaf _ => cont rank a
+  | intmap.Raw.Node l1 x1 d1 r1 _ =>
+    table_to_array_cont l1
+       (fun r a => table_to_array_cont r1 cont (r + 1) a.[r <- combine' x1 d1])
+       rank a
+  end.
+
+Definition table_to_array (table : intmap.t int) (array_size : int) :=
+   table_to_array_cont (intmap.this table)
+         (fun r a => a) 0 (PArray.make array_size 0).
+
+Definition extractkey (i : int) := i / 8.
+
+Definition initial_gap := 2 ^ 21.
+
+Definition array3 := table_to_array positions3.
+
+Time Definition array3' := Eval compute in array3.
 
 Definition result20 := cube_explore 20.
 
-
 Definition all_positions := match result20 with inl(t, _) => t | _ => empty end.
+
+Definition big_array_size :=
+  Eval vm_compute in (22 * 21 * 20 * 19 * 18 * 17 * 16) / 720.
+
+Definition big_array := table_to_array all_positions big_array_size.
+
+(* Function to find values in the array, to replace the access that we
+  had in FMapAVL.  This uses a fuel, which could be based on the log
+  of the array size.  *)
+Fixpoint lookup (a : array int) (x : int) (gap : int)
+  (position : int) (n : nat) :=
+match n with
+| 0 => None
+| S p =>
+  let current := a.[position] in
+  if x =? extractkey current then
+     Some (current mod 8)
+  else if x <? extractkey current then
+     lookup a x (gap / 2) (position - (gap / 2)) p
+  else
+     if position + gap / 2 <? PArray.length a then
+       lookup a x (gap / 2) (position + (gap / 2)) p
+     else
+       lookup a x (gap / 2) position p
+end.
+
+Definition lookup_fuel :=
+  Eval vm_compute in
+  Z.to_nat (Z.log2_up (to_Z big_array_size)).
+
+Definition array_find (table : array int) (x : int) :=
+  lookup table x (1 << 20) (1 << 20) lookup_fuel.
+
+Definition make_solution' := make_solution_generic array_find.
+
+(* Definition big_array' := Eval vm_compute in big_array. *)
