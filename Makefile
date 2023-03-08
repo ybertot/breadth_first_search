@@ -27,7 +27,10 @@ all_positions.cmi : all_positions.mli
 all_positions.cmx : all_positions.ml all_positions.cmi
 	ocamlfind ocamlopt -c $(OCAMLFLAGS) all_positions.ml
 
-print_solution.cmx : print_solution.ml
+print_solution.cmi : print_solution.mli
+	ocamlfind ocamlopt -c $(OCAMLFLAGS) print_solution.mli
+
+print_solution.cmx : print_solution.ml print_solution.cmi
 	ocamlfind ocamlopt -c $(OCAMLFLAGS) print_solution.ml
 
 cube_solver : all_positions.cmx print_solution.cmx stub.ml
