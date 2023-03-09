@@ -1,9 +1,14 @@
 From mathcomp Require Import all_ssreflect.
 Require Import bfs.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Section proof_context.
 
-Variables state move : eqType.
+Variables state : eqType.
+Variable move : finType.
 Variables state_fmap : Type.
 
 Variable empty : state_fmap.
@@ -180,7 +185,7 @@ apply: (Ih (step s ++ w2) (add db s m) _ _ _ bfs_auxq)=> //.
           by apply/mapP; exists ts.
         by case: (negP abs); rewrite -sq fdbs.
       rewrite -sq add_find.
-      by rewrite (make_path_preserve _ m s db _ _ ls fdbs lsq).
+      by rewrite (make_path_preserve m fdbs lsq).
     by rewrite /= -sq.
   rewrite add_find2 //.
   move=> /hypdb [ls' [ls'q Pls']].
@@ -192,4 +197,85 @@ move=> [trin [ls' [ls'q ls'sol]]].
 split; first by apply: add_find_none.
 exists ls'; split=> //.
 by apply make_path_preserve.
+Qed.
+
+Definition at_depth (n : nat) (targets : list (state * move)) (s : state) :=
+  (exists2 l : list move, is_solution targets s l & size l == n) /\
+  forall l, is_solution targets s l -> n <= size l.
+
+Lemma at_depth_uniq n n' s targets : at_depth n targets s ->
+  at_depth n' targets s -> n = n'.
+Proof.
+rewrite /at_depth=> -[[ln A /eqP B] nmin] [[ln' C /eqP D] n'min].
+by apply/eqP; rewrite eqn_leq -{1}D (nmin ln') // -B (n'min ln).
+Qed.
+
+Lemma at_depth_exists s targets l :
+  is_solution targets s l -> exists n, at_depth n targets s.
+Proof.
+suff main : forall n l, size l <= n -> is_solution targets s l ->
+              exists n', at_depth n' targets s.
+  by apply: (main (size l)).
+elim=> [ | n Ih] {}l szl sol.
+  exists 0; split; first by exists l=> //; rewrite leqn0 in szl.
+  by move=> ? ?; rewrite leq0n.
+have [/existsP [n' /existsP [t]] | there] := boolP [exists i : 'I_n.+1,
+        [exists t : {tuple i of move}, is_solution targets s t]].
+  by apply: Ih; rewrite size_tuple -ltnS ltn_ord.
+exists n.+1; split.
+  exists l => //; move: szl; rewrite leq_eqVlt=> /orP[] // szlt.
+  case/negP: there.
+  by apply/existsP; exists (Ordinal szlt); apply/existsP; exists (in_tuple l).
+move=> l' sol'; rewrite ltnNge; apply/negP; rewrite -ltnS=> szl'.
+case/negP: there.
+by apply/existsP; exists (Ordinal szl'); apply/existsP; exists (in_tuple l').
+Qed.
+
+Lemma bfs_aux_fact2 n targets (w w2 w3 : seq (state * move)) db db2:
+   (forall s, find db s <> None ->
+       exists2 n', at_depth n' targets s & n' <= n) ->
+   (forall s, s \in [seq p.1 | p <- w] -> find db s = None ->
+              at_depth n targets s) ->
+   (forall s, at_depth n targets s ->
+     (s \in [seq p.1 | p <- w] /\ find db s = None) \/
+     ({subset step s <= w2} /\ find db s <> None)) ->
+   (forall s, s \in [seq p.1 | p <- w2] ->
+      exists2 n', at_depth n' targets s & n' <= S n) ->
+   bfs_aux _ _ _ find add step w w2 db = (w3, db2) ->
+   (forall s, s \in [seq p.1 | p <- w3] ->
+      (exists2 n', at_depth n' targets s & n' <= S n)).
+Proof.
+elim: w w2 db => [ | [s m] w Ih] w2 db; move=> /= depth_db depthw invw invw2.
+  by move=> [ <- _].
+case fdbsq : (find db s) => [m0 | ].
+  move=> bfs_auxq.
+  apply: (Ih w2 db)=> //.
+    by move=> s' s'in; apply: depthw; rewrite inE s'in orbT.
+  move=> s' deps'; case: (invw s' deps'); last by tauto.
+  move=> [s'in s'none]; left; split=> //.
+  move: s'in; rewrite inE=> /orP[/eqP s's| ] //.
+  by move: s'none; rewrite s's fdbsq.
+apply: (Ih (step s ++ w2) (add db s m)) => //.
+- move=> s'; case: (eqVneq s s') => [<- _ | s'ns].
+    by exists n=> //; apply: depthw; rewrite // inE eqxx.
+  by rewrite add_find2 //; apply: depth_db.
+- move=> s' s'in; case: (eqVneq s s') => [<- | sns'].
+    by rewrite add_find.
+  rewrite add_find2 //; apply: depthw.
+  by rewrite inE s'in orbT.
+- move=> s' deps'; case: (eqVneq s s') => [<- | sns'].
+    right; split; first by move=> p pin; rewrite mem_cat pin.
+    by rewrite add_find.
+  case: (invw _ deps') => [ | [inw2 ndb]].
+    by rewrite inE eq_sym (negbTE sns') /= add_find2 //; left.
+  rewrite add_find2 //; right; split; last by [].
+  by move=> p pin; rewrite mem_cat; apply/orP; right; apply: inw2.
+move=> s' /mapP [p + s'q]; rewrite mem_cat=> /orP[ | pinw2]; last first.
+  by apply: invw2; apply/mapP; exists p.
+move=> /(map_f (@fst _ _))/step_transition=> /(_ p.2); rewrite -s'q => tr'.
+have := depthw s; rewrite inE eqxx /= => /(_ isT fdbsq)[[l sol sz] _].
+have sol' : is_solution targets s' (p.2 :: l) by rewrite /= tr'.
+have [n' /[dup] n'dep [_ n'min]]:= at_depth_exists sol'.
+exists n'=> //; apply: (leq_trans (n'min _ sol'))=> /=.
+by rewrite (eqP sz).
 Qed.
