@@ -511,7 +511,7 @@ Definition print_state s :=
 (*    is 2 + the round number of the round index where the last *)
 (*    element was added to table.                               *)
 Definition cube_explore (n : nat) :
-  intmap.t int * Z + list (int * int) * intmap.t int :=
+  intmap.t int * nat + list (int * int) * intmap.t int :=
   bfs _ _ _ bfs_find bfs_add reverse_steps n
     (map (fun i => (i, 0)) final_states) empty 0.
 
