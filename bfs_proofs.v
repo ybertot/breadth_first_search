@@ -200,13 +200,13 @@ by apply make_path_preserve.
 Qed.
 
 Definition at_depth (n : nat) (targets : list (state * move)) (s : state) :=
-  (exists2 l : list move, is_solution targets s l & size l == n) /\
+  (exists2 l : list move, is_solution targets s l & size l = n) /\
   forall l, is_solution targets s l -> n <= size l.
 
 Lemma at_depth_uniq n n' s targets : at_depth n targets s ->
   at_depth n' targets s -> n = n'.
 Proof.
-rewrite /at_depth=> -[[ln A /eqP B] nmin] [[ln' C /eqP D] n'min].
+rewrite /at_depth=> -[[ln A B] nmin] [[ln' C D] n'min].
 by apply/eqP; rewrite eqn_leq -{1}D (nmin ln') // -B (n'min ln).
 Qed.
 
@@ -217,13 +217,13 @@ suff main : forall n l, size l <= n -> is_solution targets s l ->
               exists n', at_depth n' targets s.
   by apply: (main (size l)).
 elim=> [ | n Ih] {}l szl sol.
-  exists 0; split; first by exists l=> //; rewrite leqn0 in szl.
+  exists 0; split; first by exists l=> //; apply/eqP; rewrite leqn0 in szl.
   by move=> ? ?; rewrite leq0n.
 have [/existsP [n' /existsP [t]] | there] := boolP [exists i : 'I_n.+1,
         [exists t : {tuple i of move}, is_solution targets s t]].
   by apply: Ih; rewrite size_tuple -ltnS ltn_ord.
 exists n.+1; split.
-  exists l => //; move: szl; rewrite leq_eqVlt=> /orP[] // szlt.
+  exists l => //; move: szl; rewrite leq_eqVlt=> /orP[/eqP //| szlt].
   case/negP: there.
   by apply/existsP; exists (Ordinal szlt); apply/existsP; exists (in_tuple l).
 move=> l' sol'; rewrite ltnNge; apply/negP; rewrite -ltnS=> szl'.
@@ -277,5 +277,5 @@ have := depthw s; rewrite inE eqxx /= => /(_ isT fdbsq)[[l sol sz] _].
 have sol' : is_solution targets s' (p.2 :: l) by rewrite /= tr'.
 have [n' /[dup] n'dep [_ n'min]]:= at_depth_exists sol'.
 exists n'=> //; apply: (leq_trans (n'min _ sol'))=> /=.
-by rewrite (eqP sz).
+by rewrite sz.
 Qed.
