@@ -15,7 +15,10 @@ match w with
 | (s, m) :: w' =>
   match find settled s with
   | Some _ => bfs_aux w' w2 settled
-  | None => bfs_aux w' (step s ++ w2) (add settled s m)
+  | None => bfs_aux w'
+      (filter (fun (p : state * move) =>
+                  if find settled (fst p) then false else true)
+          (step s) ++ w2) (add settled s m)
   end
 | nil => (w2, settled)
 end.
