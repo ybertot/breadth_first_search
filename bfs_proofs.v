@@ -203,6 +203,9 @@ Definition at_depth (n : nat) (targets : list (state * move)) (s : state) :=
   (exists2 l : list move, is_solution targets s l & size l = n) /\
   forall l, is_solution targets s l -> n <= size l.
 
+Definition depth_ge targets s n :=
+  exists2 l : list move, is_solution targets s l & size l <= n.
+
 Lemma at_depth_uniq n n' s targets : at_depth n targets s ->
   at_depth n' targets s -> n = n'.
 Proof.
@@ -230,6 +233,26 @@ move=> l' sol'; rewrite ltnNge; apply/negP; rewrite -ltnS=> szl'.
 case/negP: there.
 by apply/existsP; exists (Ordinal szl'); apply/existsP; exists (in_tuple l').
 Qed.
+
+Lemma depth_ge_exists s targets n :
+  depth_ge targets s n -> exists2 n', at_depth n' targets s & n' <= n.
+Proof.
+move=> [l lsol ln]; have [n' n'P1] := at_depth_exists lsol; exists n' => //.
+move: n'P1=> [] _ /(_ l lsol); move: ln => /[swap]; apply: leq_trans.
+Qed.
+
+Lemma depth_ge_trans targets s n m :
+  depth_ge targets s n -> n <= m -> depth_ge targets s m.
+Proof.
+by move=> [l lsol ln] nm; exists l=> //; apply: (leq_trans ln nm).
+Qed.
+
+Lemma bfs_aux_layering n targets w w2 w3 db db2:
+  (forall s, depth_ge targets s n -> find db s <> None) ->
+  (forall s s2 m, depth_ge targets s n -> transition s2 m = s ->
+     s2 \in [seq p.1 | p <- w] \/ find db s2 <> None) ->
+  bfs_aux _ _ _ find add step w w2 db = (w3, db2) ->
+  forall s, depth_ge targets s n.+1 -> find db2 s <> None.
 
 Lemma bfs_aux_fact2 n targets (w w2 w3 : seq (state * move)) db db2:
    (forall s, find db s <> None ->
@@ -279,3 +302,110 @@ have [n' /[dup] n'dep [_ n'min]]:= at_depth_exists sol'.
 exists n'=> //; apply: (leq_trans (n'min _ sol'))=> /=.
 by rewrite sz.
 Qed.
+
+Lemma bfs_aux_preserve w w2 w3 db db2 s m:
+  bfs_aux _ _ _ find add step w w2 db = (w3, db2) ->
+  find db s = Some m -> find db2 s = Some m.
+Proof.
+elim: w w2 db => [ | [a mv] w Ih] w2 db /=; first by move=> [_ <-].
+case fdba: (find db a) => [mv' |]; first by apply: Ih.
+move=> bfs_auxq /[dup]fdbs.
+suff -> : find db s = find (add db a mv) s by apply: (Ih (step a ++ w2)).
+rewrite add_find2 //.
+by apply/eqP=> asq; rewrite asq fdbs in fdba.
+Qed.
+
+Lemma bfs_aux_preserve_path targets w w2 w3 db db2 s l n :
+  bfs_aux _ _ _ find add step w w2 db = (w3, db2) ->
+  make_path db targets s n = Some l ->
+  make_path db2 targets s n = Some l.
+Proof.
+elim: n w w2 db s l=> [ | n Ih] w w2 db s l /= bfs_auxq; first by [].
+case: ifP=> [ // | not_reached].
+case fdbs : (find db s) => [mv | ]; last by [].
+rewrite (bfs_aux_preserve bfs_auxq fdbs).
+case mptr: (make_path _ _ _ _) => [l' | ]; last by [].
+by rewrite (Ih _ _ _ _ l' bfs_auxq).
+Qed.
+
+Definition optimal_solution targets s l :=
+  is_solution targets s l = true /\
+  (forall l', is_solution targets s l' = true -> 
+     size l <= size l').
+
+Lemma at_depth_layers n targets w w2 s3 db db2 :
+  
+Lemma bfs_aux_fact3 n targets w w2 w3 db db2 :
+  (forall p, p \in targets -> find db p.1 <> None) ->
+  (forall s, find db s <> None ->
+     (exists2 l, make_path db targets s n.+1 = Some l &
+       optimal_solution targets s l) /\ 
+     (forall k s' m', k.+1 < n -> at_depth k targets s ->
+         transition s' m' = s -> find db s' <> None)) ->
+  (forall p, p \in w ->
+    exists l, [/\ make_path db targets 
+                     (transition p.1 p.2) n = Some l,
+                  optimal_solution targets (transition p.1 p.2) l &
+                  size l < n]) ->
+  bfs_aux _ _ _ find add step w w2 db = (w3, db2) ->
+  (forall s, find db2 s <> None ->
+     exists2 l, make_path db2 targets s n.+1 = Some l &
+     optimal_solution targets s l).
+Proof.
+elim: w w2 db => [ | [a mv] w Ih] w2 db targetsin invdb invw.
+  move=> [_ <-] s sin; move: (invdb s sin)=> [[l lP1 lP2] layering].
+  by exists l.
+rewrite [bfs_aux _ _ _ _ _ _ _ _ _]/=.
+case fdba : (find db a) => [mv' |].
+  move=> bfs_auxq s sin.
+  have invw' : forall p, p \in w ->
+       exists l, [/\ make_path db targets (transition p.1 p.2) n = Some l,
+                     optimal_solution targets (transition p.1 p.2) l &
+                     size l < n].
+    (* If this proof fails, the statement of inw' should be changed. *)
+    by move=> p pin; apply invw; rewrite inE pin orbT.
+  have [l lP1 lP2 ] := Ih w2 db targetsin invdb invw' bfs_auxq s sin.
+  by exists l.
+move=> bfs_auxq s sin.
+have [trl [trlP1 trlP2 trlP3]] : exists l,
+           [/\ make_path db targets (transition a mv) n = Some l,
+              optimal_solution targets (transition a mv) l &
+              size l < n].
+  rewrite -[X in transition X _]/(a, mv).1 -[X in transition _ X]/(a, mv).2.
+  by apply: invw; rewrite inE eqxx.
+apply: (Ih (step a ++ w2) (add db a mv)) => //.
+- move=> p pin; rewrite add_find2; first by apply: targetsin.
+  by apply/eqP=> ap; case: (targetsin p pin); rewrite -ap.
+- move=> s' s'in.
+  case: (eqVneq a s') => [as' | ans']; last first.
+    move: s'in; rewrite add_find2 // => s'in.
+    have [[l' l'P1 l'P2] layers] := invdb s' s'in.
+    split; [exists l'=> //;apply: make_path_preserve=> //  | ].
+    move=> k s2 m' kn deps2 trs2.
+    case: (eqVneq a s2)=> [-> | ans2]; first by rewrite add_find.
+    by rewrite add_find2 //; apply: (layers k s2 m').
+  have Lay : forall k s2 m2, k.+1 < n -> at_depth k targets s2 ->
+      transition s2 m2 = s' -> find (add db a mv) s2 <> None.
+    move=> k s2 m2 dep2 tr2.
+    case: (eqVneq a s2) => [-> | ans2]; first by rewrite add_find.
+    rewrite add_find2.
+  split.
+    rewrite /=; case istarget : (has _ _); first by exists [::].
+    exists (mv :: trl); rewrite -as'.
+    rewrite add_find.
+    move/(make_path_preserve mv fdba) : trlP1 => -> //.
+
+rewrite /=; case starget: (has _ _); first by exists [::].
+case fdb2s : (find db2 s) => [m | ].
+have -> : find db2 s = 
+exists (mv :: trl) => /=.
+  case istarget : (has _ _).
+
+exists (mv :: trl).
+
+  simpl.
+have : exists2 l, make_path (add db a mv) targets a n.+1 = Some l &
+   optimal_solution targets s l.
+  
+case: (eqVneq s a) => [saq | sna]; last first.
+  apply
