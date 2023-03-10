@@ -27,10 +27,10 @@ all_positions.cmi : all_positions.mli
 all_positions.cmx : all_positions.ml all_positions.cmi
 	ocamlfind ocamlopt -c $(OCAMLFLAGS) all_positions.ml
 
-print_solution.cmi : print_solution.mli
+print_solution.cmi : print_solution.mli all_positions.cmi
 	ocamlfind ocamlopt -c $(OCAMLFLAGS) print_solution.mli
 
-print_solution.cmx : print_solution.ml print_solution.cmi
+print_solution.cmx : print_solution.ml print_solution.cmi all_positions.cmx
 	ocamlfind ocamlopt -c $(OCAMLFLAGS) print_solution.ml
 
 cube_solver : all_positions.cmx print_solution.cmx stub.ml
@@ -40,7 +40,7 @@ cube_solver : all_positions.cmx print_solution.cmx stub.ml
 cube_table_maker : all_positions.cmx stub2.ml
 	 ocamlfind ocamlopt $(OCAMLFLAGS) -o cube_table_maker all_positions.cmx\
               stub2.ml
-fast_cube_solver: all_positions.cmx print_solution.cmx stub3.ml
+fast_cube_solver: all_positions.cmx print_solution.cmx stub3.m
 	ocamlfind ocamlopt $(OCAMLFLAGS) -o fast_cube_solver all_positions.cmx\
           print_solution.cmx stub3.ml
 
