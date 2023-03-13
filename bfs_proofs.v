@@ -516,9 +516,35 @@ case fdba : (find db a)=> [mv | ].
       by right; rewrite pa fdba.
     case: (invstep s p sin pin);[rewrite inE=> /orP[]; [ | tauto] | tauto].
     by case: p pna { pin }=> p1 p2; rewrite xpair_eqE /= => /negbTE ->.
-  apply: Ih=> //.
-
-
+  by apply: Ih.
+have aSn : a \in depth_ge targets n.+1.
+  have /at_depth_exists_path [l sol zl]: transition a m \in at_depth targets n.
+    by apply: (invw (a, m)); rewrite inE eqxx.
+  have zl' : size (m :: l) <= n.+1.
+    by rewrite /= ltnS zl.
+  by rewrite inE; apply/existsP; exists (widen_bseq zl' (in_bseq (m :: l))).
+have aSn' : a \in at_depth targets n.+1.  
+  by move: aSn; rewrite depth_geS inE=> /orP[] // /dbn [].
+apply: Ih=> //.
+- move=> s; have [<- _ // | ans] := eqVneq a s.
+  by rewrite add_find2 //; apply: dbSn.
+- move=> s sin; apply: add_find_none.
+  by apply: dbn.  
+- move=> s [s' m'] sin.
+  have [as'q | ans'] := eqVneq a s'.
+    by move=> _; right; rewrite as'q add_find.  
+  move=> instep; have := invstep s _ sin instep; rewrite inE.
+  rewrite xpair_eqE eq_sym (negbTE ans') /=.
+  by rewrite add_find2.
+- move=> s sin; have [-> _ | ans'] := eqVneq a s.
+    by apply/subsetP=> x xin; rewrite mem_cat xin.
+  (* TODO : complain about missing (_ \subset _ ++ _) theorems *)
+  rewrite add_find2 // => fdbs; apply/subsetP=> p pin; rewrite mem_cat.
+  by apply/orP; right; move: p pin; apply/subsetP/stepw2.
+move=> p; rewrite mem_cat=> /orP[ | inw2]; last first.
+  by have := invw2 _ inw2=> -[] trin fdbtr; split=> //; apply: add_find_none.
+by rewrite step_def inE=> /eqP ->; rewrite add_find.
+Qed.
 
 Lemma bfs_aux_onion_property targets w w3 db db2 n:
   (forall s, find db s <> None <-> depth_ge targets s n) 
