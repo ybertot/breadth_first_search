@@ -140,8 +140,24 @@ have : s' \in depth_ge targets n.+1.
     by move: pin; rewrite step_def inE => /eqP ->.
   rewrite depth_geS 2!inE=> /orP[] // sn; case: optim.
   by apply/existsP.
+rewrite inE=>/andP[] /existsP[] l sol /forallP optim.
+set s := transition s' (tnth l ord0).
+have sols : is_solution targets s (behead l).
+  by rewrite {}/s; case: l sol=> [ [ | m' l'] zl].
+exists s; last first.
+  have /step_transition : exists m, transition s' m = s by exists (tnth l ord0).
+  move=> sin; rewrite inE sin; apply/negP; rewrite inE=> /existsP[] l2 sol2.
+  have bl2 : size l2 < n.+1 by rewrite ltnS size_bseq.
+  by have := optim (Ordinal bl2)=> /forallP /(_ (in_tuple l2)); rewrite sol2.
+rewrite inE; apply/andP; split.
+  have zl : size (behead l) = n by rewrite size_behead size_tuple.
+  by apply/existsP; exists (tcast zl (in_tuple (behead l))); rewrite val_tcast.
+apply/forallP=> i; apply/forallP=> t; apply/negP=> solt.
+have zt' : i.+1 < n.+1 by rewrite ltnS.
+have := optim (Ordinal zt')=> /forallP/(_ (tnth l ord0 :: t)).
+by rewrite /= -/s solt.
+Qed.
 
-  rewrite inE; apply/existsP; exists (p.2 :: l).
 (* We then explain how we build a parth using the database. *)
 Fixpoint make_path (db : state_fmap) (targets : list (state * move))
    (x : state) (fuel : nat) :=
