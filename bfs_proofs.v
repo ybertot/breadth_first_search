@@ -809,4 +809,101 @@ have [endcase contcase] := bfs_depth_main n db2 w1q' db0q.
 Qed.
 
 (* Lemma bfs_depth guarantees that the longest path is smaller than k.+2, but
-  it may well be smaller than k.+1.  *)
+  it may well be smaller than k.+1.  For a more precise estimate of the
+  longest path length, we need to observe the last non-empty working list. *)
+
+Lemma bfs_depth_witness m targets n db2 w :
+  bfs _ _ _ find add step n [seq (s, m) | s <- targets] empty 0 =
+  inr(w, db2) ->
+  (forall p, p \in w -> find db2 p.1 = None -> p.1 \in at_depth targets n) /\
+  ((forall p, p \in w -> find db2 p.1 <> None) -> at_depth targets n = set0).
+Proof.
+case: n => [ | n].
+  rewrite /= => -[<- <-]; split.
+    by move=> p /mapP[] s + -> //=; rewrite at_depth0.
+  move=> abs.
+  apply/setP; move=> s; rewrite in_set0 -at_depth0; apply/negP=> sin.
+  by apply: (abs (s, m)); rewrite ?find_empty //; apply/mapP; exists s.
+case: n => [ | n].
+  rewrite /=; case bfs_auxq : (bfs_aux _ _ _ _ _ _ _ _ _)=> [w3 db3].
+  case w3q : w3 => [ // | p' w3']; rewrite -w3q {w3q p' w3'}.
+  move=> [<- <-].
+  have [db3d0 [deb0db3 [step0w [dep1ndb3 [w3P _]]]]] :=
+    bfs_aux_layer0 bfs_auxq.
+  split.
+    move=> [s ms] /= inw3 ndb3; rewrite inE; apply/andP; split.
+      apply/existsP; exists (in_tuple [:: ms])=> /=.
+      by move: (w3P _ inw3); rewrite -at_depth0.
+    apply/forallP=> /= x; have := ord1 x => /= -> {x}.
+    apply/forallP=> /= t; have := tuple0 t => /= -> {t} /=; apply/negP.
+    by rewrite depth_ge0 => /deb0db3; rewrite ndb3.
+  move=> all0; apply/setP=> s; rewrite in_set0; apply/negP.
+  move=> /[dup] sd1.
+  rewrite inE=>/andP[] /existsP[[[ | m' [ | ? ?]] // zl] /= sol] {zl} n0.
+  move: n0=> /forallP /(_ ord0) /forallP /(_ [tuple]) /=; rewrite at_depth0.
+  case/negP; apply: db3d0; apply: (all0 (s, m')).
+  apply: (step0w (transition s m')).
+    by rewrite -at_depth0.
+  by rewrite step_def inE.
+rewrite bfs_step.
+case bfs_auxq: (bfs_aux _ _ _ _ _ _ _ _ _) => [w3 db3].
+case w3q : w3 => [ | m3 w4] //; rewrite -w3q {m3 w4 w3q}.
+rewrite [(0 + 1)%coq_nat]/=.
+have [db3d0 [deb0db3 [step0w [dep1ndb3 [w3P _]]]]] :=
+    bfs_aux_layer0 bfs_auxq.
+have w1q' : w3 =i \bigcup_(s in at_depth targets 0) [set x in step s].
+  move=> p; apply/idP/idP.
+    move=> /w3P tr1; apply/bigcupP; exists (transition p.1 p.2)=> //.
+    by rewrite inE step_def inE.
+  by move=>/bigcupP[] s; rewrite inE; apply step0w.
+have db0q : forall s, find db3 s <> None <-> s \in depth_ge targets 0.
+  move=> s; split; first by move=> /db3d0; apply/subsetP/at_depth_sub_ge.
+  by apply: deb0db3.
+have [_ contcase] := bfs_depth_main n db2 w1q' db0q.
+move=> /contcase; rewrite addn0=> -[wq ZZ].
+split.
+  move=> p; rewrite wq=> /bigcupP[] s sin; rewrite inE=> pin pndb.
+  suff : p.1 \in depth_ge targets n.+2.
+    by rewrite depth_geS inE=> /orP[] //; rewrite -ZZ pndb.
+  move: sin=> /at_depth_exists_path[] l sol zl.
+  move: pin; rewrite step_def inE=> /eqP trps.
+  have zl' : size (p.2 :: l) <= n.+2 by rewrite /= zl.
+  rewrite inE; apply/existsP=> /=; exists (Bseq zl') => /=.
+  by rewrite trps.
+move=> /= alldb.
+apply/setP=> s; rewrite in_set0; apply/negP.
+move=> /[dup]sdn2.
+rewrite inE=>/andP[] /existsP[[[ | m' l]] //= /eqP [zl]] /= sol nshort.
+have zl' : size l <= n.+1  by rewrite zl.
+have : transition s m' \in at_depth targets n.+1.
+   by have := at_depth_decrease sdn2 sol zl.
+move=> /[dup] trn /(subsetP (at_depth_sub_ge targets n.+1)) trindb.
+have /alldb/=/ZZ sdn1 : (s, m') \in w.
+  rewrite wq; apply/bigcupP; exists (transition s m')=> //.
+  by rewrite inE step_def inE.
+suff : s \in set0 by rewrite in_set0.
+by rewrite -(at_depthSNge targets n.+1); rewrite inE sdn2 sdn1.
+Qed.
+
+Lemma bfs_shiftr n w w2 k1 k2 db db2 :
+  bfs _ _ _ find add step n w db k1 = inr(w2, db2) ->
+  bfs _ _ _ find add step n w db k2 = inr(w2, db2).
+Proof.
+elim: n w db k1 k2=> [ | n Ih] w db k1 k2//=.
+case: (bfs_aux _ _ _ _ _ _ _ _ _)=> [w' db'].
+case w'q : w' => [ | p3 w3] //; rewrite -w'q {p3 w3 w'q}.
+by apply: Ih.  
+Qed.
+
+Lemma bfs_cat n m w w2 w3 k1 k2 k3 db db2 db3:
+  bfs _ _ _ find add step n w db k1 = inr(w2, db2) ->
+  bfs _ _ _ find add step m w2 db2 k2 = inr(w3, db3) ->
+  bfs _ _ _ find add step (n + m) w db k3 = inr(w3, db3).
+Proof.
+elim: n w k1 k3 db => [ | n Ih] w k1 k3 db.
+  move=> /= [] <- <-; rewrite add0n.
+  by apply: bfs_shiftr.
+rewrite /=; case bfsaq : (bfs_aux _ _ _ _ _ _ _ _ _) => [w' db'] .
+case w'q : w' => [ | p4 w4] //; rewrite -w'q {w'q p4 w4}.
+by move=> cp1 cp2; have := Ih _ _ (k3 + 1)%coq_nat _ cp1 cp2.
+Qed.
