@@ -65,6 +65,26 @@ Definition at_depth (targets : list state) (n : nat) : {set state} :=
   [exists t : {tuple n of move}, is_solution targets x t] &&
   [forall i : 'I_n, [forall t : {tuple i of move}, ~~is_solution targets x t]]].
 
+Lemma at_depthP targets n s:
+  reflect ((exists2 l, is_solution targets s l & size l = n) /\
+           forall l, is_solution targets s l -> n <= size l)
+      (s \in at_depth targets n).
+Proof.
+apply: Bool.iff_reflect.
+split.
+  move=> [[l sol zl] optim]; rewrite inE; apply/andP; split.
+    by apply/existsP; exists (tcast zl (in_tuple l)); rewrite val_tcast.
+  apply/forallP=> -[i iltn]; apply/forallP=> -[l' /eqP /= zl'].
+  apply/negP=> abs. 
+  have := optim l' abs; rewrite leqNgt=> /negP [].
+  by rewrite zl'.
+rewrite inE=> /andP[] /existsP[][l /= /eqP zl] sol optim.
+split; first by exists l.
+move=> l' sol'; rewrite leqNgt; apply/negP=> zl'.
+move: optim=> /forallP /(_ (Ordinal zl')) /forallP /(_ (in_tuple l')).
+by move=> /negP[] /=.
+Qed.
+
 (* TODO : rename into depth_bounded  or bounded_depth *)
 Definition depth_ge (targets : list state) (n : nat) :=
   [set x | [exists l : n.-bseq move, is_solution targets x l]].
@@ -81,15 +101,15 @@ rewrite -setP=> x; apply/idP/idP.
   rewrite inE=> /existsP [] l sol.
   rewrite inE; case ngedx : (x \in depth_ge _ _) => //=.
   have [isn | insn] := eqVneq (size l) n.+1.
-    rewrite inE; apply/andP; split.
-      by apply/existsP; exists (tcast isn (in_tuple l)); rewrite val_tcast.
-    apply /forallP=> j; apply/forallP=> u; apply/negP=> abs.
+    apply/at_depthP; split; first by exists l.
+    move=> l' abs; rewrite ltnNge; apply/negP=> zl'.
     case/negP: ngedx; rewrite inE; apply/existsP.
-    exists (insub_bseq n u); rewrite insubdK //.
-    (* TODO : understand why rewrite /= fails here. *)
-    by rewrite -[X in is_true X]/(size u <= n) size_tuple -ltnS ltn_ord.
+    by exists (insub_bseq n l'); rewrite insubdK.
+    (* TODO : understand why rewrite /= fails here.
+    rewrite -[X in is_true X]/(size l' <= n). *)
   case/negP: ngedx; rewrite inE; apply/existsP; exists (insub_bseq n l).
   rewrite insubdK //.
+  (* same TODO applies here *)
   rewrite -[X in is_true X]/(size l <= n).
   by have := size_bseq l; rewrite leq_eqVlt (negbTE insn) ltnS.
 move=> tmp; rewrite inE; apply/existsP; move: tmp.
@@ -101,30 +121,20 @@ Qed.
 Lemma at_depth_sub_ge (targets : list state)(n : nat) :
   at_depth targets n \subset depth_ge targets n.
 Proof.
-apply/subsetP=> s; rewrite inE=> /andP[] /existsP[t sol] _.
-by rewrite inE; apply/existsP; exists (bseq_of_tuple t).
+apply/subsetP=> s /at_depthP[] [l sol zl] _.
+have zl' : size l <= n by rewrite zl.
+(* TODO : complain that cast_bseq is useless here *)
+by rewrite inE; apply/existsP; exists (widen_bseq zl' (in_bseq l)).
 Qed.
 
 Lemma at_depthSNge (targets : list state) (n : nat) :
   at_depth targets n.+1 :&: depth_ge targets n = set0.
 Proof.
 apply/eqP; rewrite setI_eq0 disjoint_subset; apply/subsetP=> s.
-rewrite inE=> /andP[] _ /forallP nosol.
+move/at_depthP=> [] _ nosol.
 rewrite 3!inE /=; apply/negP=>/existsP[] l.
-have bnd : size l < n.+1 by rewrite ltnS size_bseq.
-by have := nosol (Ordinal bnd)=> /forallP /= /(_ (in_tuple l)) /= /negbTE ->.
-Qed.
-
-Lemma at_depth_step_sub (targets : list state) (n : nat) (s : state) :
-  s \in at_depth targets n -> 
-      [set s' | s' \in [seq p.1 | p <- step s]] \subset
-        (depth_ge targets n.+1).
-Proof.
-rewrite inE=>/andP[] /existsP[] t sol _; apply/subsetP=> s'; rewrite inE.
-rewrite inE => /step_transition[]m trs'.
-have smt : size (m :: t) <= n.+1 by rewrite /= size_tuple ltnSn.
-apply/existsP; exists (Bseq smt)=> /=.
-by rewrite trs'.
+move/nosol; rewrite ltnNge=> /negP[].
+by rewrite size_bseq.
 Qed.
 
 Lemma at_depth_decrease targets n s s' m l :
@@ -134,13 +144,11 @@ Lemma at_depth_decrease targets n s s' m l :
   size l = n ->
   s' \in at_depth targets n.
 Proof.
-rewrite inE=>/andP[] _ /forallP optim /= sms' sol zl.
-rewrite inE; apply/andP; split.
-  by apply/existsP; exists (tcast zl (in_tuple l)); rewrite val_tcast.
-apply/forallP=> i; apply/forallP=> t; apply/negP=> solt.
-have zt' : i.+1 < n.+1 by rewrite ltnS.
-have := optim (Ordinal zt')=> /forallP/(_ (cons_tuple m t)).
-by rewrite /= sms' solt.
+move=>/at_depthP[] _ optim /= sms' sol zl.
+apply/at_depthP; split; first by exists l.
+move=> l' sol'.
+have := optim (m :: l').
+by rewrite /= sms' => /(_ sol'); rewrite ltnS.
 Qed.
 
 Definition at_depth_step (targets : list state) (n : nat) :
@@ -149,30 +157,28 @@ Definition at_depth_step (targets : list state) (n : nat) :
   at_depth targets n.+1.
 Proof.
 apply/setP=> s';apply/bigcupP/idP.
-  move=>[] s sin; rewrite 2!inE=> /andP[]/[dup]s'in /mapP[]p pin s'p
-   /existsP /= optim.
-have : s' \in depth_ge targets n.+1.
-  move: sin; rewrite inE=> /andP[] /existsP[] l sol W.
-  have sl' : size (p.2 :: l) <= n.+1 by rewrite /= size_tuple.
+  move=> [] s sin; rewrite 2!inE => /andP[]/[dup]s'in /mapP[]p pin s'p.
+  move=> /existsP/= optim.
+  have : s' \in depth_ge targets n.+1.
+    move: sin; rewrite inE=> /andP[] /existsP[] l sol W.
+    have sl' : size (p.2 :: l) <= n.+1 by rewrite /= size_tuple.
     rewrite inE; apply/existsP; exists (Bseq sl')=> /=.
     rewrite s'p.
     by move: pin; rewrite step_def inE => /eqP ->.
-  rewrite depth_geS 2!inE=> /orP[] // sn; case: optim.
-  by apply/existsP.
-move=> /[dup]s'in.
-rewrite inE=>/andP[] /existsP[] l sol /forallP optim.
-have [s sms] : exists s, transition s' (tnth l ord0) = Some s.
-  move: sol; case: l => [ [ | m l] //= zl].
-  by case: (transition s' m) => [s | ] //; exists s.
-have sols : is_solution targets s (behead l).
-  by case: l sms sol=> [[ | m' l'] // zl] /= ->.
+  by rewrite depth_geS 2!inE=> /orP[] // /existsP sn; case: optim.
+move=> /[dup]s'in /at_depthP[] []l sol zl optim.
+case lq : l zl => [ | mv l'] // zl.
+have [s sms] : exists s, transition s' mv = Some s.
+  move: sol; rewrite lq /=.
+  by case: (transition s' mv) => [s | ] //; exists s.
+have sols : is_solution targets s l'.
+  by move: sol; rewrite lq /= sms.
 exists s; last first.
   have /step_transition : exists m, transition s' m = Some s.
-    by exists (tnth l ord0).
+    by exists mv.
   move=> sin; rewrite inE sin; apply/negP; rewrite inE=> /existsP[] l2 sol2.
-  have bl2 : size l2 < n.+1 by rewrite ltnS size_bseq.
-  by have := optim (Ordinal bl2)=> /forallP /(_ (in_tuple l2)); rewrite sol2.
-by apply: (at_depth_decrease s'in sms sols); rewrite size_behead size_tuple.
+  by have := optim l2 sol2; rewrite ltnNge size_bseq.
+by apply: (at_depth_decrease s'in sms sols); move: zl=> /= [].
 Qed.
 
 Lemma depth_ge_trans targets n n' : n <= n' ->
@@ -200,6 +206,16 @@ have : s \in at_depth targets n'.+1 :&: depth_ge targets n'.
 by rewrite at_depthSNge inE.
 Qed.
 
+Lemma at_depth0 targets : targets =i at_depth targets 0.
+Proof.
+move=> s; rewrite inE; apply/idP/idP.
+  move=> sin; apply/andP; split.
+    by apply/existsP; exists [tuple].
+  by apply/forallP=> - [x xlt0].
+by move=>/andP[] /existsP[] t; have := tuple0 t => ->.
+Qed.
+
+
 Lemma at_depth_exists s targets l :
   is_solution targets s l -> exists n, s \in at_depth targets n.
 Proof.
@@ -208,9 +224,7 @@ suff main : forall n l, size l <= n ->
   by apply: (main (size l)).
 elim=> [ | n Ih] {}l szl sol.
   case : l szl sol => //= _ sin.
-  exists 0; rewrite inE; apply/andP; split.
-    by apply/existsP; exists [tuple].
-  by apply/forallP=> - [].
+  by exists 0; rewrite -at_depth0.
 have [/existsP [n' /existsP [t]] | there] := boolP [exists i : 'I_n.+1,
         [exists t : {tuple i of move}, is_solution targets s t]].
   by apply: Ih; rewrite size_tuple -ltnS ltn_ord.
@@ -218,10 +232,11 @@ have zl : size l = n.+1.
   move: szl; rewrite leq_eqVlt => /orP[/eqP // | szlt].
   case/negP: there; apply/existsP; exists (Ordinal szlt).
   by apply/existsP; exists (in_tuple l).
-exists (size l); rewrite inE; apply/andP; split.
-  by apply/existsP; exists (in_tuple l).
-rewrite zl; apply/forallP=> i; move: there; rewrite negb_exists=> /forallP.
-by move=> /(_ i); rewrite negb_exists.
+exists (size l).
+apply/at_depthP; split; first by exists l.
+move=> l' sol'; rewrite zl ltnNge; apply/negP; rewrite -ltnS => zl'.
+case/negP: there; apply/existsP.
+by exists (Ordinal zl'); apply/existsP; exists (in_tuple l').
 Qed.
 
 Lemma depth_ge_exists s targets n :
@@ -232,8 +247,7 @@ rewrite inE=> /existsP [l lsol].
 have [n' n'P1] := at_depth_exists lsol; exists n' => //.
 apply: leq_trans (size_bseq l).
 case : (leqP n' (size l)) => // lltn'.
-move: n'P1; rewrite inE=> /andP[] _ /forallP /(_ (Ordinal lltn')).
-by move=>/forallP /(_ (in_tuple l)); rewrite lsol.
+by move: n'P1=> /at_depthP[] _ /(_ l lsol); rewrite leqNgt lltn'.
 Qed.
 
 (* We then explain how we build a parth using the database. *)
@@ -399,6 +413,7 @@ Qed.
 Lemma at_depth_exists_path targets n s :
   s \in at_depth targets n -> exists2 l, is_solution targets s l & size l = n.
 Proof.
+(* Not redoing, this is just part of at_depthP *)
 by rewrite inE=> /andP[] /existsP[] x sol _; exists x; rewrite ?size_tuple.
 Qed.
 
@@ -661,15 +676,6 @@ case w3q' : w3 => [ | p3 w4]; split;[ | discriminate | | ].
 by rewrite -w3q' PeanoNat.Nat.add_succ_r PeanoNat.Nat.add_0_r.
 Qed.
 
-Lemma at_depth0 targets : targets =i at_depth targets 0.
-Proof.
-move=> s; rewrite inE; apply/idP/idP.
-  move=> sin; apply/andP; split.
-    by apply/existsP; exists [tuple].
-  by apply/forallP=> - [x xlt0].
-by move=>/andP[] /existsP[] t; have := tuple0 t => ->.
-Qed.
-
 Lemma depth_ge0 targets : targets =i depth_ge targets 0.
 Proof.
 move=> s; rewrite inE; apply/idP/idP.
@@ -845,21 +851,17 @@ case: n => [ | n].
   have [db3d0 [deb0db3 [step0w [dep1ndb3 [w3P _]]]]] :=
     bfs_aux_layer0 bfs_auxq.
   split.
-    move=> [s ms] /= inw3 ndb3; rewrite inE; apply/andP; split.
-      apply/existsP; exists (in_tuple [:: ms])=> /=.
-      by move: (w3P _ inw3)=> [sms /[dup] smsq ->]; rewrite at_depth0.
-    apply/forallP=> /= x; have := ord1 x => /= -> {x}.
-    apply/forallP=> /= t; have := tuple0 t => /= -> {t} /=; apply/negP.
-    by rewrite depth_ge0 => /deb0db3; rewrite ndb3.
+    move=> [s ms] /= inw3 ndb3; apply/at_depthP; split.
+      by exists [:: ms]; move: (w3P _ inw3)=> //= [sms ->]; rewrite at_depth0.
+    move=> l sol; rewrite ltnNge leqn0 size_eq0; apply/negP=> /eqP lnil.
+    by move: sol; rewrite lnil=> /=; rewrite depth_ge0=> /deb0db3[].
   move=> all0; apply/setP=> s; rewrite in_set0; apply/negP.
   move=> /[dup] sd1.
-  rewrite inE=>/andP[] /existsP[[[ | m' [ | ? ?]] // zl] /= sol] {zl} n0.
-  move: n0=> /forallP /(_ ord0) /forallP /(_ [tuple]) /=; rewrite at_depth0.
-  case/negP; apply: db3d0; apply: (all0 (s, m')).
-  move: sol; case tsmq : (transition s m') => [tsm' | ] // sol.
-  apply: (step0w tsm').
-    by rewrite -at_depth0.
-  by rewrite step_def inE tsmq.
+  move=>/at_depthP[][][ | m' [ | ? ?]] // /=.
+  case tsmq : (transition s m') => [tsm' | ] // + _.
+  have : (s, m') \in step tsm' by rewrite step_def inE tsmq.
+  rewrite at_depth0=> /step0w /[apply] /all0/db3d0 /=.
+  by move=> /(at_depth_unique sd1).
 rewrite bfs_step.
 case bfs_auxq: (bfs_aux _ _ _ _ _ _ _ _ _) => [w3 db3].
 case w3q : w3 => [ | m3 w4] //; rewrite -w3q {m3 w4 w3q}.
@@ -898,9 +900,9 @@ split.
 move=> /= alldb.
 apply/setP=> s; rewrite in_set0; apply/negP.
 move=> /[dup]sdn2.
-rewrite inE=>/andP[] /existsP[[[ | m' l]] //= /eqP [zl]] /= sol nshort.
+move=> /at_depthP[][] [ | m' l] // sol /= [zl] nshort.
 have zl' : size l <= n.+1  by rewrite zl.
-move: sol; case tsmq : (transition s m') => [ tsm' | ] // sol.
+move: sol => /=; case tsmq : (transition s m') => [ tsm' | ] // sol.
 have : tsm' \in at_depth targets n.+1.
    by have := at_depth_decrease sdn2 tsmq sol zl.
 move=> /[dup] trn /(subsetP (at_depth_sub_ge targets n.+1)) trindb.
