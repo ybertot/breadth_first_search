@@ -1,5 +1,8 @@
 Require Import List Arith ZArith Uint63.
-Require Import cube_explore.
+From cube_puzzle Require Import cube_explore.
+
+Time Compute make_solution_array 0x0620e big_array.
+
 
 (* If I write 
 
