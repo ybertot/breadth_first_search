@@ -251,20 +251,21 @@ by move: n'P1=> /at_depthP[] _ /(_ l lsol); rewrite leqNgt lltn'.
 Qed.
 
 (* We then explain how we build a parth using the database. *)
-Fixpoint make_path (db : state_fmap) (targets : list state)
+Fixpoint make_path (db : state_fmap)
+   (targetb : state -> bool) (play : state -> move -> option state)
    (x : state) (fuel : nat) :=
 match fuel with
 | 0 => None
 | S p =>
-  if has (fun s => s == x) targets then
+  if targetb x then
      Some nil
   else
      match find db x with
      | None => None
      | Some m =>
-       match transition x m with
+       match play x m with
        | Some y =>
-         match make_path db targets y p with
+         match make_path db targetb play y p with
          | None => None
          | Some l => Some (m :: l)
          end
@@ -277,13 +278,14 @@ Definition fact1 :=
   forall targets depth t r count,
   bfs _ _ _ find add step depth targets empty count = inl(t, r) ->
   forall s l, is_solution [seq p.1 | p <- targets] s l = true ->
-  exists l', make_path t [seq p.1 | p <- targets] s depth = Some l' /\
+  exists l', make_path t (mem [seq p.1 | p <- targets])
+                transition s depth = Some l' /\
     length l' <= length l.
 
 Definition fact2 := 
   forall targets t s r l depth depth' count,
   bfs _ _ _ find add step depth targets empty count = inl(t, r) ->
-  make_path t [seq p.1 | p <- targets] s depth' = Some l ->
+  make_path t (mem [seq p.1 | p <- targets]) transition s depth' = Some l ->
   is_solution [seq p.1 | p <- targets] s l = true.
 
 Definition fact3 :=
@@ -309,19 +311,19 @@ Lemma bfs_step (fuel : nat) (w : seq (state * move)) (settled : state_fmap)
   end.
 Proof. by case: fuel. Qed.
 
-Lemma make_path_step db targets x fuel:
-  make_path db targets x fuel =
+Lemma make_path_step db targetb play x fuel:
+  make_path db targetb play x fuel =
     match fuel with
   | 0 => None
   | S p =>
-      if has (fun s : state => s == x) targets
+      if targetb x
       then Some nil
       else
        match find db x with
        | Some m =>
-           match transition x m with
+           match play x m with
              Some y =>
-             match make_path db targets y p with
+             match make_path db targetb play y p with
              | Some l => Some (m :: l)
              | None => None
              end
@@ -332,39 +334,39 @@ Lemma make_path_step db targets x fuel:
   end.
 Proof. by case: fuel. Qed.
 
-Lemma make_path_preserve x m s db targets depth l:
+Lemma make_path_preserve x m s db targetb play depth l:
   find db s = None ->
-  make_path db targets x depth = Some l ->
-  make_path (add db s m) targets x depth = Some l.
+  make_path db targetb play x depth = Some l ->
+  make_path (add db s m) targetb play x depth = Some l.
 Proof.
 move=> dbnone.
 elim: depth x l => [ | depth Ih]; first by [].
 move=> x l /=.
 case: ifP => exq //.
 case fdbx: (find db x) => [m' | ] //.
-case trq : (transition x m') => [y | ] //.
-case mpq : (make_path db targets y depth) => [ l' | ] // [eql].
+case trq : (play x m') => [y | ] //.
+case mpq : (make_path db targetb play y depth) => [ l' | ] // [eql].
 have nochange : find (add db s m) x = find db x.
   by rewrite add_find2 //; apply/eqP=> sx; move: dbnone; rewrite sx fdbx.
 by rewrite nochange fdbx trq (Ih y l') ?eql.
 Qed.
 
-Lemma make_path_add_length db targets s depth l :
-  make_path db targets s depth = Some l ->
-  make_path db targets s depth.+1 = Some l.
+Lemma make_path_add_length db targetb play s depth l :
+  make_path db targetb play s depth = Some l ->
+  make_path db targetb play s depth.+1 = Some l.
 Proof.
 elim: depth s l => [ | n Ih] s l //.
 rewrite 2!make_path_step.
-case exq : (has _ _)=> //.
+case exq : (targetb _)=> //.
 case fdbq : (find db s) => [m | ] //.
-case trq : (transition s m) => [s' | ] //.
-case mq : (make_path _ _ _ _)=> [l' | ] //.
+case trq : (play s m) => [s' | ] //.
+case mq : (make_path _ _ _ _ _)=> [l' | ] //.
 by move/Ih : mq => ->.
 Qed.
 
-Lemma make_path_le db targets s n m l :
-  n <= m -> make_path db targets s n = Some l ->
-  make_path db targets s m = Some l.
+Lemma make_path_le db targetb play s n m l :
+  n <= m -> make_path db targetb play s n = Some l ->
+  make_path db targetb play s m = Some l.
 Proof.
 elim: m => [ | m Ih].
   by rewrite leqn0=> /eqP ->.
@@ -812,7 +814,7 @@ have w1q' : w1 =i \bigcup_(s in at_depth targets 0) [set x in step s].
   move=> p; apply/idP/idP.
     move=> /propw1 [tp tpq tr1].
     by apply/bigcupP; exists tp => //; rewrite inE step_def inE tpq.
-  by move=>/bigcupP[] s /depth1in; rewrite inE=> /[apply] - [].
+  by move=>/bigcupP[] s /depth1in; rewrite inE=> /[apply].
 have db0q : forall s, find db0 s <> None <-> s \in depth_ge targets 0.
   move=> s; split; first by move=> /db0depth; apply/subsetP/at_depth_sub_ge.
   by move=> /depth0in.
@@ -936,19 +938,19 @@ case w'q : w' => [ | p4 w4] //; rewrite -w'q {w'q p4 w4}.
 by move=> cp1 cp2; have := Ih _ _ (k3 + 1)%coq_nat _ cp1 cp2.
 Qed.
 
-Lemma table_consistent_make_path N db targets :
+Lemma table_consistent_make_path N db targets targetb:
+  targetb =1 mem targets ->
   (forall s, find db s <> None <-> s \in depth_ge targets N) ->
   (forall s m n, s \in at_depth targets n.+1 -> find db s = Some m ->
      exists2 s', transition s m = Some s' &
        find db s' <> None /\ s' \in at_depth targets n) ->
   forall s n, n <= N -> s \in at_depth targets n ->
-     exists2 l, make_path db targets s n.+1 = Some l &
+     exists2 l, make_path db targetb transition s n.+1 = Some l &
       is_solution targets s l /\ size l = n.
 Proof.
-move=> bnd consistent /[swap]; elim => [ | n Ih] s nN.
+move=> targetbP bnd consistent /[swap]; elim => [ | n Ih] s nN.
   rewrite -at_depth0=> sin /=.
-  have -> : has (eq_op^~ s) targets; last by exists [::].
-  by apply/hasP; exists s.
+  by rewrite targetbP /= sin; exists [::].
 move=> /[dup] sin1 /(subsetP (at_depth_sub_ge _ _)).
 move=> /(subsetP (depth_ge_trans targets nN)) /bnd.
 case fdbq : (find db s) => [ m | ] // _.
@@ -957,8 +959,8 @@ have nleN : n <= N by exact: (ltnW nN).
 have [l' l'q [sol' zl']] := Ih s' nleN s'in.
 exists (m :: l').
   rewrite make_path_step fdbq tsmq l'q.
-  case : ifP=> /hasP //.
-  move=> -[] x /[swap] /eqP ->; rewrite at_depth0=> sin0.
+  rewrite targetbP /=; case: ifP=> //.
+  rewrite at_depth0 => sin0.
   by have := at_depth_unique sin1 sin0.
 by rewrite /= tsmq zl' sol'.
 Qed.
@@ -970,19 +972,20 @@ Qed.
   - the table can be used by function make_path (which will always
     succeeds on elements of the path) to produce optimal solutions *)
 
-Lemma bfs_make_path_optimal db targets n m k:
+Lemma bfs_make_path_optimal db targets targetb n m k:
+  targetb =i mem targets ->
   bfs _ _ _ find add step n.+2 [seq (s, m) | s <- targets] empty 0 =
   inl (db, k.+1) ->
   forall s, find db s <> None ->
     [/\ s \in depth_ge targets k.+1,
-    is_solution targets s (odflt [::] (make_path db targets s k.+2)) &
+    is_solution targets s (odflt [::] (make_path db targetb transition s k.+2)) &
     forall l, is_solution targets s l ->
-       size (odflt [::] (make_path db targets s k.+2)) <= size l].
+       size (odflt [::] (make_path db targetb transition s k.+2)) <= size l].
 Proof.
-move=> bfsq.
+move=> targetbP bfsq.
 have [dle [_ expath]] := bfs_depth_bound bfsq.
 move=> s /[dup] fdbn; case fdbq : (find db s) => [ms | ] // _.
-have := table_consistent_make_path dle expath.
+have := table_consistent_make_path targetbP dle expath.
 have /dle/depth_ge_exists[ n' sin' n'le]  := fdbn.
 move=> /(_ s n' n'le sin')[l lq [sol zl]].
 have n'le' : n'.+1 <= k.+2 by rewrite ltnS.
