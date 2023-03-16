@@ -5,6 +5,9 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+Arguments make_path {state move state_fmap}.
+Arguments bfs {state move state_fmap}.
+
 Section proof_context.
 
 (* Variables state : eqType.*)
@@ -250,47 +253,23 @@ case : (leqP n' (size l)) => // lltn'.
 by move: n'P1=> /at_depthP[] _ /(_ l lsol); rewrite leqNgt lltn'.
 Qed.
 
-(* We then explain how we build a parth using the database. *)
-Fixpoint make_path (db : state_fmap)
-   (targetb : state -> bool) (play : state -> move -> option state)
-   (x : state) (fuel : nat) :=
-match fuel with
-| 0 => None
-| S p =>
-  if targetb x then
-     Some nil
-  else
-     match find db x with
-     | None => None
-     | Some m =>
-       match play x m with
-       | Some y =>
-         match make_path db targetb play y p with
-         | None => None
-         | Some l => Some (m :: l)
-         end
-      | None => None
-      end
-     end
-end.
-
 Definition fact1 :=
   forall targets depth t r count,
-  bfs _ _ _ find add step depth targets empty count = inl(t, r) ->
+  bfs find add step depth targets empty count = inl(t, r) ->
   forall s l, is_solution [seq p.1 | p <- targets] s l = true ->
-  exists l', make_path t (mem [seq p.1 | p <- targets])
+  exists l', make_path find t (mem [seq p.1 | p <- targets])
                 transition s depth = Some l' /\
     length l' <= length l.
 
 Definition fact2 := 
   forall targets t s r l depth depth' count,
-  bfs _ _ _ find add step depth targets empty count = inl(t, r) ->
-  make_path t (mem [seq p.1 | p <- targets]) transition s depth' = Some l ->
+  bfs find add step depth targets empty count = inl(t, r) ->
+  make_path find t (mem [seq p.1 | p <- targets]) transition s depth' = Some l ->
   is_solution [seq p.1 | p <- targets] s l = true.
 
 Definition fact3 :=
   forall targets t r depth,
-  bfs _ _ _ find add step depth targets empty 0 = inl(t, r) ->
+  bfs find add step depth targets empty 0 = inl(t, r) ->
   forall s l, is_solution [seq p.1 | p <- targets] s l = true ->
     length l + 2 <= r /\
   exists s l, is_solution [seq p.1 | p <- targets] s l = true /\
@@ -298,7 +277,7 @@ Definition fact3 :=
 
 Lemma bfs_step (fuel : nat) (w : seq (state * move)) (settled : state_fmap)
    round:
-   bfs _ _ _ find add step fuel w settled round =
+   bfs find add step fuel w settled round =
   match fuel with
   | 0 => inr (w, settled)
   | p.+1 =>
@@ -306,13 +285,13 @@ Lemma bfs_step (fuel : nat) (w : seq (state * move)) (settled : state_fmap)
         bfs_aux state move state_fmap find add step w [::] settled in
       match w0 with
       | [::] => inl (s, round)
-      | _ :: _ => bfs _ _ _ find add step p w0 s (round + 1)%coq_nat
+      | _ :: _ => bfs find add step p w0 s (round + 1)%coq_nat
       end
   end.
 Proof. by case: fuel. Qed.
 
 Lemma make_path_step db targetb play x fuel:
-  make_path db targetb play x fuel =
+  make_path find db targetb play x fuel =
     match fuel with
   | 0 => None
   | S p =>
@@ -323,7 +302,7 @@ Lemma make_path_step db targetb play x fuel:
        | Some m =>
            match play x m with
              Some y =>
-             match make_path db targetb play y p with
+             match make_path find db targetb play y p with
              | Some l => Some (m :: l)
              | None => None
              end
@@ -336,8 +315,8 @@ Proof. by case: fuel. Qed.
 
 Lemma make_path_preserve x m s db targetb play depth l:
   find db s = None ->
-  make_path db targetb play x depth = Some l ->
-  make_path (add db s m) targetb play x depth = Some l.
+  make_path find db targetb play x depth = Some l ->
+  make_path find (add db s m) targetb play x depth = Some l.
 Proof.
 move=> dbnone.
 elim: depth x l => [ | depth Ih]; first by [].
@@ -345,28 +324,28 @@ move=> x l /=.
 case: ifP => exq //.
 case fdbx: (find db x) => [m' | ] //.
 case trq : (play x m') => [y | ] //.
-case mpq : (make_path db targetb play y depth) => [ l' | ] // [eql].
+case mpq : (make_path find db targetb play y depth) => [ l' | ] // [eql].
 have nochange : find (add db s m) x = find db x.
   by rewrite add_find2 //; apply/eqP=> sx; move: dbnone; rewrite sx fdbx.
 by rewrite nochange fdbx trq (Ih y l') ?eql.
 Qed.
 
 Lemma make_path_add_length db targetb play s depth l :
-  make_path db targetb play s depth = Some l ->
-  make_path db targetb play s depth.+1 = Some l.
+  make_path find db targetb play s depth = Some l ->
+  make_path find db targetb play s depth.+1 = Some l.
 Proof.
 elim: depth s l => [ | n Ih] s l //.
 rewrite 2!make_path_step.
 case exq : (targetb _)=> //.
 case fdbq : (find db s) => [m | ] //.
 case trq : (play s m) => [s' | ] //.
-case mq : (make_path _ _ _ _ _)=> [l' | ] //.
+case mq : (make_path _ _ _ _ _ _)=> [l' | ] //.
 by move/Ih : mq => ->.
 Qed.
 
 Lemma make_path_le db targetb play s n m l :
-  n <= m -> make_path db targetb play s n = Some l ->
-  make_path db targetb play s m = Some l.
+  n <= m -> make_path find db targetb play s n = Some l ->
+  make_path find db targetb play s m = Some l.
 Proof.
 elim: m => [ | m Ih].
   by rewrite leqn0=> /eqP ->.
@@ -556,13 +535,13 @@ Lemma bfs_depth_main targets n' n w db db2 :
   (forall s m n, s \in at_depth targets n.+1 -> find db s = Some m ->
      exists2 s', transition s m = Some s' &
        find db s' <> None /\ s' \in at_depth targets n) ->
-  (forall k, bfs _ _ _ find add step n'.+1 w db n.+1 = inl(db2, k.+1) ->
+  (forall k, bfs find add step n'.+1 w db n.+1 = inl(db2, k.+1) ->
     (forall s, find db2 s <> None <-> s \in depth_ge targets k.+1) /\
     at_depth targets k.+2 = set0 /\
   (forall s m n, s \in at_depth targets n.+1 -> find db2 s = Some m ->
      exists2 s', transition s m = Some s' &
        find db2 s' <> None /\ s' \in at_depth targets n)) /\
-  (forall w2, bfs _ _ _ find add step n'.+1 w db n.+1 = inr(w2, db2) ->
+  (forall w2, bfs find add step n'.+1 w db n.+1 = inr(w2, db2) ->
    w2 =i \bigcup_(s in at_depth targets (n' + n).+1) [set x in step s] /\
    (forall s, find db2 s <> None <-> s \in depth_ge targets (n' + n).+1) /\
    (forall s m n, s \in at_depth targets n.+1 -> find db2 s = Some m ->
@@ -781,7 +760,7 @@ by rewrite w2q; apply/bigcupP; exists s'; rewrite inE.
 Qed.
 
 Lemma bfs_depth_bound m targets n db2 k:
-  bfs _ _ _ find add step n.+2 
+  bfs find add step n.+2 
     [seq (s, m) | s <- targets] empty 0 = inl (db2, k.+1) ->
   (forall s, find db2 s <> None <-> s \in depth_ge targets k.+1) /\
   at_depth targets k.+2 = set0 /\
@@ -835,7 +814,7 @@ Qed.
   longest path length, we need to observe the last non-empty working list. *)
 
 Lemma bfs_depth_witness m targets n db2 w :
-  bfs _ _ _ find add step n [seq (s, m) | s <- targets] empty 0 =
+  bfs find add step n [seq (s, m) | s <- targets] empty 0 =
   inr(w, db2) ->
   (forall p, p \in w -> find db2 p.1 = None -> p.1 \in at_depth targets n) /\
   ((forall p, p \in w -> find db2 p.1 <> None) -> at_depth targets n = set0).
@@ -916,8 +895,8 @@ by rewrite -(at_depthSNge targets n.+1); rewrite inE sdn2 sdn1.
 Qed.
 
 Lemma bfs_shiftr n w w2 k1 k2 db db2 :
-  bfs _ _ _ find add step n w db k1 = inr(w2, db2) ->
-  bfs _ _ _ find add step n w db k2 = inr(w2, db2).
+  bfs find add step n w db k1 = inr(w2, db2) ->
+  bfs find add step n w db k2 = inr(w2, db2).
 Proof.
 elim: n w db k1 k2=> [ | n Ih] w db k1 k2//=.
 case: (bfs_aux _ _ _ _ _ _ _ _ _)=> [w' db'].
@@ -926,9 +905,9 @@ by apply: Ih.
 Qed.
 
 Lemma bfs_cat n m w w2 w3 k1 k2 k3 db db2 db3:
-  bfs _ _ _ find add step n w db k1 = inr(w2, db2) ->
-  bfs _ _ _ find add step m w2 db2 k2 = inr(w3, db3) ->
-  bfs _ _ _ find add step (n + m) w db k3 = inr(w3, db3).
+  bfs find add step n w db k1 = inr(w2, db2) ->
+  bfs find add step m w2 db2 k2 = inr(w3, db3) ->
+  bfs find add step (n + m) w db k3 = inr(w3, db3).
 Proof.
 elim: n w k1 k3 db => [ | n Ih] w k1 k3 db.
   move=> /= [] <- <-; rewrite add0n.
@@ -945,7 +924,7 @@ Lemma table_consistent_make_path N db targets targetb:
      exists2 s', transition s m = Some s' &
        find db s' <> None /\ s' \in at_depth targets n) ->
   forall s n, n <= N -> s \in at_depth targets n ->
-     exists2 l, make_path db targetb transition s n.+1 = Some l &
+     exists2 l, make_path find db targetb transition s n.+1 = Some l &
       is_solution targets s l /\ size l = n.
 Proof.
 move=> targetbP bnd consistent /[swap]; elim => [ | n Ih] s nN.
@@ -974,13 +953,14 @@ Qed.
 
 Lemma bfs_make_path_optimal db targets targetb n m k:
   targetb =i mem targets ->
-  bfs _ _ _ find add step n.+2 [seq (s, m) | s <- targets] empty 0 =
+  bfs find add step n.+2 [seq (s, m) | s <- targets] empty 0 =
   inl (db, k.+1) ->
   forall s, find db s <> None ->
     [/\ s \in depth_ge targets k.+1,
-    is_solution targets s (odflt [::] (make_path db targetb transition s k.+2)) &
+    is_solution targets s (odflt [::]
+       (make_path find db targetb transition s k.+2)) &
     forall l, is_solution targets s l ->
-       size (odflt [::] (make_path db targetb transition s k.+2)) <= size l].
+       size (odflt [::] (make_path find db targetb transition s k.+2)) <= size l].
 Proof.
 move=> targetbP bfsq.
 have [dle [_ expath]] := bfs_depth_bound bfsq.
@@ -992,3 +972,5 @@ have n'le' : n'.+1 <= k.+2 by rewrite ltnS.
 rewrite (make_path_le n'le' lq) /=; split => //; first by apply/dle.
 by rewrite zl=> l2 sol2; apply: (at_depth_le sin').
 Qed.
+
+End proof_context.

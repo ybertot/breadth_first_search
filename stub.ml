@@ -8,9 +8,9 @@ let all_solutions =
   | Inr _ -> assert false;;
 
 let anon_fun s =
-  let result = make_solution (Uint63.of_int (int_of_string s)) all_solutions 
+  let result = make_solution' (Uint63.of_int (int_of_string s)) all_solutions 
        in
-      print_solution result;;
+      print_solution' result;;
 
 let () = Arg.parse [] anon_fun "sorry, no documentation\n";;
 

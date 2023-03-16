@@ -32,6 +32,30 @@ Fixpoint bfs (fuel : nat) (w : list (state * move)) (settled : state_fmap)
     end
   end.
 
+  (* We then explain how we build a parth using the database. *)
+Fixpoint make_path (db : state_fmap)
+(targetb : state -> bool) (play : state -> move -> option state)
+(x : state) (fuel : nat) :=
+match fuel with
+| 0 => None
+| S p =>
+if targetb x then
+  Some nil
+else
+  match find db x with
+  | None => None
+  | Some m =>
+    match play x m with
+    | Some y =>
+      match make_path db targetb play y p with
+      | None => None
+      | Some l => Some (m :: l)
+      end
+   | None => None
+   end
+  end
+end.
+
 End explore.
 
 (* Instantiating the final state map to association lists. *)

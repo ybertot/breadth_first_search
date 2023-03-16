@@ -548,9 +548,24 @@ Definition make_solution_generic {T : Type} (find : T -> int -> option int) (x :
       end
     end) x 20%nat.
 
+Definition play (state : int) (move : int) : option int :=
+  if move =? 1 then state_up state else
+  if move =? 2 then state_right state else
+  if move =? 3 then state_down state else
+  if move =? 4 then state_left state else
+  None.
+
 Definition make_solution (x : int) (table : intmap.t int) : list (int * int) :=
   make_solution_generic bfs_find x table.
 
+Definition make_solution' (x : int) (table : intmap.t int) : list int :=
+  match 
+    make_path _ _ _ bfs_find table (fun s => PrimInt63.eqb (get_cube s) 63) 
+    play x 20 with
+    Some l => l
+  | None => nil
+  end.
+ 
 Definition new_ones (l : list (int * int)) (table : intmap.t int) :
    list (int * int)
    :=
@@ -646,6 +661,11 @@ Definition lookup_fuel :=
 Definition array_find (table : array int) (x : int) :=
   lookup table x (1 << 20) (1 << 20) lookup_fuel.
 
-Definition make_solution' := make_solution_generic array_find.
+Definition make_solution_array := make_solution_generic array_find.
+
+Definition make_solution_array' 
+   (x : int) (table : array int) : option (list int) :=
+  make_path _ _ _ array_find table (fun s => PrimInt63.eqb (get_cube s) 63)
+    play x 20.
 
 (* Definition big_array' := Eval vm_compute in big_array. *)

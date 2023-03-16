@@ -40,7 +40,7 @@ cube_solver : all_positions.cmx print_solution.cmx stub.ml
 cube_table_maker : all_positions.cmx stub2.ml
 	 ocamlfind ocamlopt $(OCAMLFLAGS) -o cube_table_maker all_positions.cmx\
               stub2.ml
-fast_cube_solver: all_positions.cmx print_solution.cmx stub3.m
+fast_cube_solver: all_positions.cmx print_solution.cmx stub3.ml
 	ocamlfind ocamlopt $(OCAMLFLAGS) -o fast_cube_solver all_positions.cmx\
           print_solution.cmx stub3.ml
 
