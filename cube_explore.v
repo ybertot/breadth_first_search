@@ -1,4 +1,5 @@
 Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
+Require Import Wellfounded.
 Require Export PArray.
 Require Sorting.Mergesort Orders.
 Import ListNotations.
@@ -667,5 +668,33 @@ Definition make_solution_array'
    (x : int) (table : array int) : option (list int) :=
   make_path _ _ _ array_find table (fun s => PrimInt63.eqb (get_cube s) 63)
     play x 20.
+
+Definition max_card := Z.to_nat (to_Z max_int).
+
+Definition map_order (t1 t2 : intmap.t int) :=
+  (max_card - intmap.cardinal t1 < max_card - intmap.cardinal t2)%nat.
+
+Definition map_order_wf : well_founded map_order :=
+   wf_inverse_image (intmap.t int) nat lt
+     (fun t => (max_card - intmap.cardinal t)%nat) lt_wf.
+
+Axiom add_decrease :
+  forall map s v, bfs_find map s = None -> map_order (bfs_add map s v) map.
+
+Lemma  map_order_trans :
+  forall map2 map1 map3, map_order map1 map2 -> map_order map2 map3 ->
+   map_order map1 map3.
+Proof.
+now intros map2 map1 map3; unfold map_order; apply Nat.lt_trans.
+Qed.
+
+Definition cube_explore' (v : unit) : intmap.t int * nat :=
+  match bfs' _ _ _ bfs_find bfs_add reverse_steps map_order map_order_wf
+    add_decrease map_order_trans
+    (map (fun i => (i, 0)) final_states) empty 0 with
+  | inl r => r
+  | inr (_, r) => (r, 0%nat)
+  end.
+
 
 (* Definition big_array' := Eval vm_compute in big_array. *)
