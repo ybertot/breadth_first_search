@@ -718,16 +718,90 @@ assert (xnb : x <> b).
   exact Z.lt_trans.
   revert tmp; rewrite Forall_forall; intros tmp.
   assert (tmp' := tmp x inl1); lia.
-assert (inl2 : (b = x \/ In x l1)) by now right.
-apply incmp in inl2; destruct inl2 as [xb | it]; auto.
-now case xnb; rewrite xb.
+  assert (inl2 : (b = x \/ In x l1)) by now right.
+  apply incmp in inl2; destruct inl2 as [xb | it]; auto.
+  now case xnb; rewrite xb.
+intros anb sl1 sl2 sub12; assert (blta : (b < a)%Z).
+  assert (cases : (a < b \/ b < a)%Z) by lia.
+  destruct cases; auto.
+  assert (tmp: Forall (Z.lt a) (b :: l2)).
+    assert (sabl2 : Sorted Z.lt (a :: b :: l2)).
+      constructor; auto.
+    apply Sorted_extends; auto.
+    exact Z.lt_trans.
+  revert tmp; rewrite Forall_forall; intros tmp.
+  enough (a < a)%Z by lia.
+  apply tmp.
+  now simpl; apply sub12; left.
+rewrite <- Nat.succ_le_mono.
+apply Ih.
+    now inversion sl1.
+  now inversion sl2.
+intros x inl1.
+assert (xinl2 :  a = x \/ In x l1) by tauto.
+apply sub12 in xinl2; destruct xinl2 as [bx | ?]; auto.
+apply Sorted_extends in sl1;[ | exact Z.lt_trans].
+rewrite Forall_forall in sl1; apply sl1 in inl1.
+lia.
+Qed.
 
 Lemma add_list_length_lt (l1 l2 : list Z) y :
   Sorted Z.lt l1 -> Sorted Z.lt l2 ->
   (forall x, In x l1 -> In x l2) ->
   In y l2 -> ~ In y l1 -> Datatypes.length l1 < Datatypes.length l2.
 Proof.
-
+intros sl1; revert l2.
+induction sl1 as [ | a l1 sl1 Ih hdrel]; intros [ | b l2]; simpl; auto with arith.
+    tauto.
+  intros _ abs; case (abs a); intuition auto.
+intros sl2 subl1l2 yin2 ynin1.
+assert (sl1' : Sorted Z.lt (a :: l1)) by now constructor.
+destruct (Z.eq_dec a b) as [abq | nab].
+  assert (yin2' : In y l2).
+    destruct yin2 as [byq | ?]; auto.
+    now case ynin1; left; rewrite abq, byq.
+  assert (yin1' : ~In y l1).
+    now intros ctr; case ynin1; right.
+  rewrite <- Nat.succ_lt_mono.
+  apply Ih; auto.
+    now inversion sl2.
+  intros x xin1.
+  assert (tmp : a = x \/ In x l1) by now right.
+  apply subl1l2 in tmp; destruct tmp as [bxq | ?]; auto.
+  enough (a < x)%Z by lia.
+  apply Sorted_extends in sl1';[ | exact Z.lt_trans].
+  rewrite Forall_forall in sl1'; apply sl1' in xin1; lia.
+assert (blta : (b < a)%Z).
+  assert (cases : (a < b \/ b < a)%Z) by lia.
+  destruct cases; auto.
+  assert (tmp: Forall (Z.lt a) (b :: l2)).
+    assert (sabl2 : Sorted Z.lt (a :: b :: l2)).
+      constructor; auto.
+    apply Sorted_extends; auto.
+    exact Z.lt_trans.
+  revert tmp; rewrite Forall_forall; intros tmp.
+  enough (a < a)%Z by lia.
+  apply tmp.
+  now simpl; apply subl1l2; left.
+  rewrite <- Nat.succ_lt_mono.
+  destruct yin2 as [byq | yinl2].
+  assert (hyple : forall x, In x (a :: l1) -> In x l2).
+    intros x; simpl; intros xinl1; assert (xinl1' := xinl1).
+    apply subl1l2 in xinl1; destruct xinl1; auto.
+    destruct xinl1' as [ | xinl1']; try congruence.
+    assert (sl12 := sl1').
+    apply Sorted_extends in sl1';[ | exact Z.lt_trans].
+    rewrite Forall_forall in sl1'; apply sl1' in xinl1'; lia.
+  now apply add_list_length_le in hyple; auto; inversion sl2.
+apply Ih;[ now inversion sl2 | |auto | tauto].
+intros x xinl1.
+assert (xinl2 : a = x \/ In x l1) by tauto.
+apply subl1l2 in xinl2; destruct xinl2 as [bx | ?]; auto.
+apply Sorted_extends in sl1';[ | exact Z.lt_trans].
+rewrite Forall_forall in sl1'.
+apply sl1' in xinl1.
+lia.
+Qed.
 
 Axiom add_decrease :
   forall map s v, bfs_find map s = None -> map_order (bfs_add map s v) map.
