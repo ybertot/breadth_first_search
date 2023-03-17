@@ -120,11 +120,11 @@ elim settled using (Fix map_order_wf).
 intros x bfs' w round.
 case (inspect (bfs_aux w nil x)).
 intros [[ | a' w'] s] h.
-  exact (inl (settled, round)).
+  exact (inl (x, round)).
 apply (fun h => bfs' s h (a' :: w') (round + 1)).
 now apply (bfs_aux_order w a' w'); auto.
 Qed.
-
+Print bfs'.
 (* The function bfs' cannot be executed in Coq, but its extraction can
   be executed in OCaml. *)
 

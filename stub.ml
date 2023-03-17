@@ -1,16 +1,30 @@
 open All_positions
 open Print_solution
 
-let all_solutions = 
-  match cube_explore (S (S (S (S (S (S (S (S (S (S 
-                (S (S (S (S (S (S (S (S (S (S (O))))))))))))))))))))) with
-  | Inl(t, _) -> t
-  | Inr _ -> assert false;;
+let computation () = cube_explore' Tt;;
 
 let anon_fun s =
-  let result = make_solution' (Uint63.of_int (int_of_string s)) all_solutions 
-       in
-      print_solution' result;;
+  let (table, rounds) = computation() in
+  let result = make_solution' (Uint63.of_int (int_of_string s)) table in
+    begin
+      print_string "computation rounds: ";
+      print_int (nat_to_int rounds);
+      print_string "\n";
+      print_solution' result
+    end;;
+  
+let no_arg_fun () =
+  let (_, rounds) = computation() in
+  begin
+    print_string "computation rounds: ";
+    print_int (nat_to_int rounds);
+    print_string "\n";
+  end;;
 
-let () = Arg.parse [] anon_fun "sorry, no documentation\n";;
+
+  Arg.parse [] anon_fun 
+    ("with an integer argument: computes a table of solutions\n" ^
+     "applies it to the position described by the given argument\n" ^
+     "The maximal depth in the table is displayed, followed by\n" ^
+     "the solution for that position\n");;
 

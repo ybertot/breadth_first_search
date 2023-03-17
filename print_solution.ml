@@ -15,3 +15,5 @@ let rec print_solution' = function
 | d :: tl ->
   print_string (code_to_direction d); print_solution' tl;;
 
+  let rec nat_to_int n =
+  match n with S x -> (nat_to_int x) + 1 | O -> 0;;

@@ -1,4 +1,5 @@
 Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
+Require Import FMapFacts.
 Require Import Lia  Wellfounded  PArray.
 Import ListNotations.
 
@@ -93,6 +94,8 @@ Defined.
 End int_as_OT.
 
 Module intmap := FMapAVL.Make int_as_OT.
+Module facts := FMapFacts.OrdProperties intmap.
+Search intmap.cardinal in facts.
 
 Arguments intmap.find _ (_)%uint63 _.
 Arguments intmap.add _ (_)%uint63 _ _.
@@ -698,6 +701,8 @@ transitivity  (S ( Z.to_nat (bound - b))).
 lia.
 Qed.
 
+(* TODO : remove this lemma if useless. *)
+
 Lemma add_list_length_le (l1 l2 : list Z) :
   Sorted Z.lt l1 -> Sorted Z.lt l2 ->
   (forall x, In x l1 -> In x l2) ->
@@ -803,8 +808,65 @@ apply sl1' in xinl1.
 lia.
 Qed.
 
-Axiom add_decrease :
+Lemma Sorted_map [A B : Type] (f : A -> B) (Ra : A -> A -> Prop)
+  [Rb : B -> B -> Prop] l :
+  Sorted Ra l ->
+  (forall x y, In x l -> In y l -> Ra x y -> Rb (f x) (f y)) ->
+  Sorted Rb (map f l).
+Proof.
+induction 1 as [ | x l ls Ih cmpx].
+  intros; constructor.
+intros monot; simpl; constructor.
+  apply Ih.
+  intros u v uin vin; apply monot; simpl; tauto.
+destruct l as [ | b l]; simpl; auto.
+constructor.
+apply monot; simpl; try tauto.
+now inversion cmpx.
+Qed.
+
+Lemma add_decrease :
   forall map s v, bfs_find map s = None -> map_order (bfs_add map s v) map.
+Proof.
+intros m s v snin.
+unfold map_order.
+Search intmap.add facts.P.Add.
+Search intmap.In intmap.elements.
+enough (intmap.cardinal m < intmap.cardinal (bfs_add m s v)).
+  enough (bnd : forall (m' : intmap.t int), intmap.cardinal m' <= max_card).
+    assert (tmp1 := bnd m).
+    assert (tmp2 := bnd (bfs_add m s v)).
+    lia.
+  intros m'; rewrite intmap.cardinal_1.
+  Check intmap.elements m' : list (int * int).
+  (*TODO : complain about the need for this pattern command. *)
+  pattern (Datatypes.length (intmap.elements m')).
+  rewrite <- (map_length (fun p => to_Z (fst p)) (intmap.elements m')).
+  apply size_list_max.
+        easy.
+      apply (Sorted_map (fun p => to_Z (fst p)) (intmap.lt_key (elt := int))).
+      now apply intmap.elements_3.
+    now auto.
+  intros x; simpl.
+  rewrite in_map_iff; intros [y [to_Zy _]]; rewrite <- to_Zy.
+  now apply to_Z_bounded.
+
+enough (eqlistA (facts.O.eqke (elt:= int)) (intmap.elements (bfs_add m s v))
+          (facts.elements_lt (s, v) m ++ (s, v) :: facts.elements_ge (s, v) m)).
+  apply eqlistA_length in H.
+  rewrite app_length in H; simpl in H; rewrite Nat.add_succ_r in H.
+  rewrite <- app_length in H; rewrite <-facts.elements_split in H.
+  rewrite !intmap.cardinal_1.
+  (* TODO : complain that " rewrite H " does not work here. *)
+  assert (circ : forall a b : nat, a = S b -> b < a) by (intros; lia).
+  apply (circ _ _ H).
+  Search eqlistA in facts.
+  apply facts.elements_Add.
+  Search intmap.In intmap.find.
+  rewrite facts.P.F.in_find_iff.
+  now unfold bfs_find in snin; rewrite snin.
+ unfold facts.P.Add; reflexivity.
+ Qed.
 
 Lemma  map_order_trans :
   forall map2 map1 map3, map_order map1 map2 -> map_order map2 map3 ->

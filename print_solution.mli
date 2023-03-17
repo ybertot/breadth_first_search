@@ -5,3 +5,4 @@ open All_positions
    4 = left *)
 val print_solution : (Uint63.t * Uint63.t) list -> unit
 val print_solution': Uint63.t list -> unit
+val nat_to_int : nat -> int

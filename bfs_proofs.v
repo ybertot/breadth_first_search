@@ -135,7 +135,7 @@ Lemma at_depthSNge (targets : list state) (n : nat) :
 Proof.
 apply/eqP; rewrite setI_eq0 disjoint_subset; apply/subsetP=> s.
 move/at_depthP=> [] _ nosol.
-rewrite 3!inE /=; apply/negP=>/existsP[] l.
+rewrite 2!inE /=; apply/negP=>/existsP[] l.
 move/nosol; rewrite ltnNge=> /negP[].
 by rewrite size_bseq.
 Qed.
