@@ -1,29 +1,8 @@
 Require Import List ZArith Uint63 String OrderedType OrderedTypeEx FMapAVL.
-Require Import Wellfounded.
-Require Export PArray.
-Require Sorting.Mergesort Orders.
+Require Import Lia  Wellfounded  PArray.
 Import ListNotations.
 
 Require Import bfs.
-
-(* Preparatory work to use the predefined module for merge sort. *)
-(* Note that Orders is not imported, because some of its defined *)
-(* names clash with OrderedType.                                 *)
-Module intZle <: Orders.TotalLeBool'.
-
-Definition t := (int * int)%type.
-
-Definition leb := 
-  fun x y : int * int => PrimInt63.leb (fst x) (fst y).
-
-Lemma leb_total : forall x y : int * int, leb x y = true \/ leb y x = true.
-Proof.
-intros x y; unfold leb; rewrite !leb_spec; apply Z.le_ge_cases.
-Qed.
-
-End intZle.
-
-Module msort := Mergesort.Sort intZle.
 
 (* We are going to generated huge lists of integers, for which  *)
 (* the default length function provided in the list module is   *)
@@ -669,7 +648,7 @@ Definition make_solution_array'
   make_path _ _ _ array_find table (fun s => PrimInt63.eqb (get_cube s) 63)
     play x 20.
 
-Definition max_card := Z.to_nat (to_Z max_int).
+Definition max_card := Z.to_nat wB.
 
 Definition map_order (t1 t2 : intmap.t int) :=
   (max_card - intmap.cardinal t1 < max_card - intmap.cardinal t2)%nat.
@@ -677,6 +656,78 @@ Definition map_order (t1 t2 : intmap.t int) :=
 Definition map_order_wf : well_founded map_order :=
    wf_inverse_image (intmap.t int) nat lt
      (fun t => (max_card - intmap.cardinal t)%nat) lt_wf.
+
+Lemma size_list_max bound : (0 < bound)%Z ->
+  forall l, Sorted Z.lt l -> (forall x, In x l -> (0 <= x < bound)%Z) ->
+   Datatypes.length l <= Z.to_nat bound.
+Proof.
+intros boundgt0 l sortl allbounds.
+enough (main : Datatypes.length l <= Z.to_nat (bound - hd bound l)).
+  assert (subbounds : (0 <= hd bound l <= bound)%Z).
+   destruct l as [ | a l'].
+     simpl; lia.
+   assert (ain : In a (a :: l')) by (simpl; tauto).
+   assert (tmp := allbounds a ain); simpl; lia.
+   apply Nat.le_trans with (1 := main).
+   rewrite <- Z2Nat.inj_le; lia.
+revert sortl allbounds.
+induction l as [ | a l Ih].
+  intros _ _; simpl.
+  now rewrite Z.sub_diag; simpl.
+simpl.
+destruct l as [ | b l'].
+  simpl; intros _ inbounds.
+  assert (altbound : (1 <= bound - a)%Z).
+    destruct (inbounds a); auto; lia.
+  replace 1%nat with (Z.to_nat 1) by easy.
+  rewrite <- Z2Nat.inj_le; try lia.
+intros sortabl' inbouds.
+assert (inbounds' : forall x, In x (b :: l') -> (0 <= x < bound)%Z).
+  now intros x xin; apply inbouds; right.
+assert (altb : (a < b)%Z).
+  inversion sortabl' as [ | dum1 dum2 sbl' cmp].
+  now inversion cmp.
+assert (bin : (0 <= b < bound)%Z) by (apply inbouds; simpl; tauto).
+assert (tonatab : (bound - a = bound - b + (b - a))%Z) by ring.
+rewrite tonatab.
+rewrite Z2Nat.inj_add; try lia.
+transitivity  (S ( Z.to_nat (bound - b))).
+  rewrite <- Nat.succ_le_mono.
+  apply Ih; auto.
+  now inversion sortabl'.
+lia.
+Qed.
+
+Lemma add_list_length_le (l1 l2 : list Z) :
+  Sorted Z.lt l1 -> Sorted Z.lt l2 ->
+  (forall x, In x l1 -> In x l2) ->
+  Datatypes.length l1 <= Datatypes.length l2.
+Proof.
+revert l2; induction l1 as [ | a l1 Ih]; intros [ | b l2]; simpl;
+  auto with arith.
+intros _ _ abs; case (abs a); tauto.
+case (Z.eq_dec a b).
+  intros abq; rewrite abq; intros sl1 sl2 incmp.
+  rewrite <- Nat.succ_le_mono; apply Ih.
+  now inversion sl1.
+  now inversion sl2.
+intros x inl1.
+assert (xnb : x <> b).
+  assert (tmp : Forall (Z.lt b) l1).
+  apply Sorted_extends; auto.
+  exact Z.lt_trans.
+  revert tmp; rewrite Forall_forall; intros tmp.
+  assert (tmp' := tmp x inl1); lia.
+assert (inl2 : (b = x \/ In x l1)) by now right.
+apply incmp in inl2; destruct inl2 as [xb | it]; auto.
+now case xnb; rewrite xb.
+
+Lemma add_list_length_lt (l1 l2 : list Z) y :
+  Sorted Z.lt l1 -> Sorted Z.lt l2 ->
+  (forall x, In x l1 -> In x l2) ->
+  In y l2 -> ~ In y l1 -> Datatypes.length l1 < Datatypes.length l2.
+Proof.
+
 
 Axiom add_decrease :
   forall map s v, bfs_find map s = None -> map_order (bfs_add map s v) map.
