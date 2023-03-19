@@ -1,4 +1,6 @@
-Require Import List.
+Require Import List Arith Lia.
+Require Import Wellfounded.
+From Equations Require Import Equations.
 
 Section explore.
 
@@ -113,18 +115,113 @@ Qed.
 Definition inspect {A : Type} (x : A) : {y : A | x = y} :=
   exist _ x eq_refl.
 
-Definition bfs' (w : list (state * move)) (settled : state_fmap)
-  (round : nat) : (state_fmap * nat) + (list (state * move) * state_fmap).
-revert w round.
-elim settled using (Fix map_order_wf).
-intros x bfs' w round.
-case (inspect (bfs_aux w nil x)).
-intros [[ | a' w'] s] h.
-  exact (inl (x, round)).
-apply (fun h => bfs' s h (a' :: w') (round + 1)).
-now apply (bfs_aux_order w a' w'); auto.
+Definition is_nil {A : Type} (l : list A) :=
+  match l with nil => true | _ :: _ => false end.
+
+Lemma bfs_aux_orderb :
+  forall (mp s : state_fmap) (w w2 : list (state * move))
+     (h_aux : bfs_aux w nil mp = (w2, s))
+     (hcons : is_nil w2 = false), map_order s mp.
+intros mp s w w2 h_aux hcons.
+destruct w2 as [ | p w2].
+  discriminate hcons.
+now apply (bfs_aux_order w p w2 mp s).
 Qed.
-Print bfs'.
+
+Record bfs_state := 
+ { fmap : state_fmap; work_list : list (state * move); count : nat }.
+
+Definition bfs_order : bfs_state -> bfs_state -> Prop :=
+  fun s1 s2 => map_order (fmap s1) (fmap s2).
+
+Lemma bfs_wf : well_founded bfs_order.
+Proof.
+now apply (wf_inverse_image _ _ map_order fmap map_order_wf).
+Qed.
+
+Definition bfs_F :=
+  (fun (triplet : bfs_state) 
+     (this_bfs : forall y (hwf : bfs_order y triplet),
+               (state_fmap * nat) + (list (state * move) * state_fmap))
+     =>
+     match inspect (bfs_aux (work_list triplet) nil (fmap triplet)) with
+     | exist _ (w2, s) h_aux =>
+       match inspect (is_nil w2) with
+       | exist _ true h_nil =>
+         inl(s, count triplet)
+       | exist _ false h_cons =>
+         let new_state := {| fmap := s; work_list := w2; count := 
+                              (count triplet + 1) |} in
+         this_bfs new_state (bfs_aux_orderb (fmap triplet) (fmap new_state)
+                   (work_list triplet) w2 h_aux h_cons)
+       end
+    end).
+
+Definition bfs' w settled count :=
+  Fix bfs_wf _ bfs_F {| fmap := settled; work_list := w; count := count |}.
+
+Lemma bfs_eq t :
+  Fix bfs_wf _ bfs_F t = 
+    bfs_F t (fun y _ => (Fix bfs_wf _ bfs_F y)).
+Proof.
+apply (fun h => Init.Wf.Fix_eq bfs_wf _ bfs_F h t).
+clear t.
+intros t f g fgq.
+unfold bfs_F.
+case (inspect (bfs_aux (work_list t) nil (fmap t))).
+intros (w2, db2) h_aux.
+case (inspect (is_nil w2)); intros [ | ] h_eqnil.
+  reflexivity.
+apply fgq.
+Qed.
+
+Lemma bfs'_eq w settled c p : bfs' w settled c = inl p ->
+  bfs (S (snd p) - c) w settled c = inl p /\ (c <= snd p).
+Proof.
+unfold bfs'.
+set (t := {| fmap := settled; work_list := w; count := c|}).
+change (bfs (S (snd p) - c) w settled c) with
+ (bfs (S (snd p) - (count t)) (work_list t) (fmap t) (count t)).
+change (c <= snd p) with (count t <= snd p).
+elim t using (well_founded_ind bfs_wf); clear t.
+intros triplet Ih; rewrite bfs_eq; unfold bfs_F at 1.
+destruct (inspect (bfs_aux (work_list triplet) nil (fmap triplet))) as
+ [[w2 db2] h_aux].
+destruct (inspect (is_nil w2)) as [[ | ] h_cons].
+  intros [= pq].
+  assert (fuelq : S (snd p) - count triplet = S (snd p - count triplet)).
+    rewrite <- pq; simpl.
+    case (count triplet); intros; lia.
+  rewrite fuelq; simpl; rewrite h_aux; destruct w2; try discriminate.
+  now rewrite <- pq.
+intros rec_comp; apply Ih in rec_comp.
+  revert rec_comp.
+  simpl (count _); simpl (fmap _); simpl (work_list _).
+  intros [rec_comp count_cond].
+  assert (fuelq : S (snd p) - count triplet  =
+          (S (S (snd p) - (count triplet + 1)))).
+    lia.
+  rewrite fuelq; simpl; rewrite h_aux; destruct w2; try discriminate.
+  destruct (snd p) as [ | k] eqn:sndpSk; try lia.
+  replace (match count triplet + 1 with 0 => S (S k) | S l => S k - l end)
+      with (S (S k) - (count triplet + 1)) by now rewrite !Nat.add_succ_r; lia.
+  rewrite rec_comp; split; auto; lia.
+unfold bfs_order; simpl.
+now apply (bfs_aux_orderb _ _ (work_list triplet) w2); auto.
+Qed.
+
+(* The following is an attempt to define bfs' using Equations, which
+should do most of the proof work for us, but it fails without an error
+message. *)
+(*
+#[local] Instance wf_map : WellFounded map_order := map_order_wf.
+Equations bfs' (settled : state_fmap) (w : list (state * move))(count : nat) 
+  : (state_fmap * nat) + (list (state * move) * state_fmap)
+    by wf settled map_order :=
+bfs' settled w count with inspect (bfs_aux w nil settled) => {
+  | exist (nil, s) h => inl(s, count);
+  | exist (w2, s) h => bfs' s w2 (count + 1)}.
+*)
 (* The function bfs' cannot be executed in Coq, but its extraction can
   be executed in OCaml. *)
 
