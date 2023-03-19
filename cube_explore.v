@@ -95,7 +95,6 @@ End int_as_OT.
 
 Module intmap := FMapAVL.Make int_as_OT.
 Module facts := FMapFacts.OrdProperties intmap.
-Search intmap.cardinal in facts.
 
 Arguments intmap.find _ (_)%uint63 _.
 Arguments intmap.add _ (_)%uint63 _ _.
@@ -830,15 +829,12 @@ Lemma add_decrease :
 Proof.
 intros m s v snin.
 unfold map_order.
-Search intmap.add facts.P.Add.
-Search intmap.In intmap.elements.
 enough (intmap.cardinal m < intmap.cardinal (bfs_add m s v)).
   enough (bnd : forall (m' : intmap.t int), intmap.cardinal m' <= max_card).
     assert (tmp1 := bnd m).
     assert (tmp2 := bnd (bfs_add m s v)).
     lia.
   intros m'; rewrite intmap.cardinal_1.
-  Check intmap.elements m' : list (int * int).
   (*TODO : complain about the need for this pattern command. *)
   pattern (Datatypes.length (intmap.elements m')).
   rewrite <- (map_length (fun p => to_Z (fst p)) (intmap.elements m')).
@@ -860,9 +856,7 @@ enough (eqlistA (facts.O.eqke (elt:= int)) (intmap.elements (bfs_add m s v))
   (* TODO : complain that " rewrite H " does not work here. *)
   assert (circ : forall a b : nat, a = S b -> b < a) by (intros; lia).
   apply (circ _ _ H).
-  Search eqlistA in facts.
   apply facts.elements_Add.
-  Search intmap.In intmap.find.
   rewrite facts.P.F.in_find_iff.
   now unfold bfs_find in snin; rewrite snin.
  unfold facts.P.Add; reflexivity.
