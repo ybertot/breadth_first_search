@@ -1,6 +1,16 @@
 Require Import List Arith ZArith Uint63.
 From cube_puzzle Require Import cube_explore.
 
+Definition db_of_result
+  (r : intmap.t int * nat + list (int * int) * intmap.t int) :=
+match r with inl(db, _) => db | inr(_, db) => db end.
+
+Definition all_solutions_raw :=
+  intmap.this (db_of_result (cube_explore 20)).
+
+Time Definition all_solutions_computed := Eval vm_compute in all_solutions_raw.
+
+
 Time Compute make_solution_array 0x0620e big_array.
 
 
