@@ -1,8 +1,6 @@
 Require Import List Arith ZArith Uint63.
 From cube_puzzle Require Import cube_explore.
 
-Definition res17 := cube_explore 17.
-
 Definition remain (result :  intmap.t int * nat + list (int * int) * intmap.t int) :
           list (int * int)  :=
   match result with
@@ -19,11 +17,28 @@ Definition one_more_step (res : intmap.t int * nat + list (int * int) * intmap.t
   | inl _ => inr(nil, empty)
   end.
 
-Definition db17 :=
-  match res17 with inr(_, db) => db | inl _ => empty end.
+Definition get_db (res : intmap.t int * nat + list (int * int) * intmap.t int) :
+    intmap.t int :=
+  match res with
+  | inl(db, _) => db
+  | inr(_, db) => db
+  end.
+
+Definition get_w (res : intmap.t int * nat + list (int * int) * intmap.t int) :
+    list (int * int) :=
+  match res with inl _ => nil | inr(w, _) => w end.
+
+Definition res17 := cube_explore 17.
+
+Definition db17 := get_db res17.
+
+Definition res18 := one_more_step res17.
+
+Definition res19 := one_more_step res18.
 
 Time Compute hd (0, 0) (remain res17).
-(* This returns (118872, 4) *)
+(* This returns (118872, 4)  after 560 seconds on nardis, recomputing
+   takes 4 seconds(res4 is memorized, the processing of remain is redone *)
 
 Import String.
 Compute print_state 118872.
@@ -45,100 +60,63 @@ Definition res18 :=
   end.
 *)
 
-Definition res18 := one_more_step res17.
-
-Definition get_db (res : intmap.t int * nat + list (int * int) * intmap.t int) :
-    intmap.t int :=
-  match res with
-  | inl(db, _) => db
-  | inr(_, db) => db
-  end.
-
-Definition get_w (res : intmap.t int * nat + list (int * int) * intmap.t int) :
-    list (int * int) :=
-  match res with inl _ => nil | inr(w, _) => w end.
-
 Time Compute List.length (get_w res18).
-(* The answer is 4216 *)
+(* The answer is 4216, the computation takes 4.2 seconds. *)
 Time Compute hd (0, 0) (remain res18).
+Compute List.length (remain res18).
 (* There is no starting position at depth 18. *)
 Time Compute List.length (new_ones (get_w res18) (get_db res18)).
 (* But there are 136 position that are not at depth 17 or less. *)
-Definition res19 := one_more_step res18.
 
+Time Compute List.length (get_w res19).
 Time Compute List.length (new_ones (get_w res19) (get_db res19)).
 (* There are no positions that are not at depth 18 or less.
   In other words, all positions are at depth 18 or less.  but
-  *)
+  since there are no starting position at depth 18, the deeper
+  positions are at depth 17.
+*)
 
-Import String.
-Compute print_state 644106.
+Compute List.length (make_solution 118872 (get_db res19)).
+(* This reiterates that the length of path for 118872 is 17 *)
+Import ListNotations.
 
-Compute List.length (make_solution 644106 db17).
+Definition hard17 :=
+  map of_Z (nodup Z.eq_dec (map (fun x => to_Z (fst x)) 
+          (remain res17))).
+Compute hard17.
+(* The answer is
+[118872; 301578; 301322; 886029; 565417; 565401; 45224; 365581; 20684;
+        365833; 838661; 626777; 821771; 643145; 118812; 86108; 446601; 636937;
+        988429; 172171; 249937; 932362; 964618; 407818; 902405; 901389; 696467;
+        694285; 172195; 364683; 700429; 996106; 700584; 176289; 700553; 372873;
+        176259; 700457; 372749; 569489; 987356; 692393; 15112; 364813; 692493;
+        333069; 496901; 610460; 432649; 741592; 774296; 269066; 249089; 430603;
+        364937; 692617; 565425; 497925; 372761; 494853; 493837; 905477; 708873;
+        379141; 628761; 741529; 643097; 446489; 819379; 643153; 741465; 432153;
+        86045; 430109; 626955; 268555; 924171; 428555; 237619; 432139; 628747;
+        931851; 643083; 446475] *)
 
-Time Compute bfs_find intmap.empty 644106.
-Compute List.length (remain res17).
+Compute List.length hard17.
+(* So there are only 84 different positions that require 17 steps to solve.
+   modulo symmetry, that gives 21.  Let's list the one
+    whose positions are in the top left corner. *)
 
-Definition res18 :=
-  bfs_aux _ _ _ bfs_find bfs_add
+Import Bool.
+Definition top_left_hard :=
+  filter (fun s => (get_position s =? 0) ||
+                         (get_position s =? 1) ||
+                         (get_position s =? 4) ||
+                         (get_position s =? 5)) hard17.
+Compute List.length top_left_hard.
 
-Definition remain18 := remain 18.
-Compute List.length remain18.
+Compute fold_right (fun s buffer =>
+  (print_position (get_position s) ++ 
+  print_board (get_board s) ++ string_return ++
+  buffer)%string) ""%string top_left_hard.
 
-Compute List.length (filter (fun p => ((get_board (fst p) >> get_position (fst p)) land 1) =? 0)
-           remain17).
-
-Compute List.length (filter (fun p => ((get_board (fst p) >> get_position (fst p)) land 1) =? 0)
-           remain18).
-
-Compute hd (0, 0) remain18.
-
-Compute print_state 694283.
-
-Definition require n := 
-  match cube_explore n with
-  | inr (w, _) => w
-  | inl _ => nil
-  end.
-
-Definition require19 := require 19.
-
-Compute hd (0,0) require19.
-(* The answer is 36589577 *)
-(* This answer shows that there are positions at level 19 *)
-
-Compute new_ones require19 .
-
-Definition db_of_result
-  (r : intmap.t int * nat + list (int * int) * intmap.t int) :=
-  match r with inl(db, _) => db | inr(_, db) => db end.
-
-Compute List.length (make_solution 36589577 all_positions).
-(* This answer shows that a position at level 19 has length 16. *)
-
-Definition require20 := require 20.
-
-Compute hd (0,0) require20.
-
-(* This result shows that there are no positions at level 20. *)
-
-Compute List.length (filter (fun p => ((get_board (fst p) >> get_position (fst p)) land 1) =? 0)
-           remain18).
-Compute (map fst (firstn 20 (filter (fun p => ((get_board (fst p) >> get_position (fst p)) land 1) =? 0)
-           remain18))).
-Definition db_of_result
-  (r : intmap.t int * nat + list (int * int) * intmap.t int) :=
-match r with inl(db, _) => db | inr(_, db) => db end.
-
-Definition all_solutions_raw :=
-  intmap.this (db_of_result (cube_explore 20)).
-
-Time Definition all_solutions_computed := Eval vm_compute in all_solutions_raw.
-
-
-Time Compute make_solution_array 0x0620e big_array.
-
-
+Compute get_position 102610.
+Compute print_board (get_board 102610).
+Compute ((get_board 102610 >> 1) land 1).
 (* If I write 
 
 Time Compute make_solution 0x0620E
