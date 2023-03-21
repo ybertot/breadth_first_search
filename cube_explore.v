@@ -557,7 +557,8 @@ Definition new_ones (l : list (int * int)) (table : intmap.t int) :
 
 Definition starting_positions (l : list (int * int)) : list (int * int) :=
    filter (fun p => andb (PrimInt63.eqb (get_cube (fst p)) 0)
-                         (PrimInt63.eqb ((get_board p >> get_position p) land 1)
+                         (PrimInt63.eqb 
+                           ((get_board (fst p) >> get_position (snd p)) land 1)
                                 0)) l.
 
 Definition result3 := cube_explore 3.
