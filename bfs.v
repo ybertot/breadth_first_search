@@ -213,15 +213,15 @@ Qed.
 (* The following is an attempt to define bfs' using Equations, which
 should do most of the proof work for us, but it fails without an error
 message. *)
-(*
 #[local] Instance wf_map : WellFounded map_order := map_order_wf.
-Equations bfs' (settled : state_fmap) (w : list (state * move))(count : nat) 
+
+Equations bfs'' (settled : state_fmap) (w : list (state * move))(count : nat) 
   : (state_fmap * nat) + (list (state * move) * state_fmap)
     by wf settled map_order :=
-bfs' settled w count with inspect (bfs_aux w nil settled) => {
-  | exist (nil, s) h => inl(s, count);
-  | exist (w2, s) h => bfs' s w2 (count + 1)}.
-*)
+bfs'' settled w count with inspect (bfs_aux w nil settled) => {
+  | @exist (nil, s) h => inl(s, count);
+  | @exist (w2, s) h => bfs'' s w2 (count + 1)}.
+
 (* The function bfs' cannot be executed in Coq, but its extraction can
   be executed in OCaml. *)
 
