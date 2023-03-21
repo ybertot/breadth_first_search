@@ -1,6 +1,15 @@
 Require Import List Arith ZArith Uint63.
 From cube_puzzle Require Import cube_explore.
 
+Definition remain n :=
+  match cube_explore n with
+  | inr (w, db) => 
+    starting_positions w
+  | inl _ => nil
+  end.
+    
+Time Compute remain 17.
+
 Definition db_of_result
   (r : intmap.t int * nat + list (int * int) * intmap.t int) :=
 match r with inl(db, _) => db | inr(_, db) => db end.
