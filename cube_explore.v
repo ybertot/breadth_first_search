@@ -474,8 +474,49 @@ Definition print_state s :=
     append (print_cube (get_cube s)) 
     (append (print_position (get_position s)) (print_board (get_board s))).
 
- Definition print_opt_state s :=
-   match s with None => ""%string | Some s => print_state s end.
+(* As a complement to print_state, a procedure to output the game ID as used in
+  the original game by S. Tatham. The relevant function is  print_game_ID, and
+  is only relevant for starting positions. *)
+Fixpoint int_to_bit_list (bit_count : nat) (n : int) :=
+  match bit_count with
+  | 0 => nil
+  | S p => (if (n land 1) =? 1 then true else false) :: int_to_bit_list p (n >> 1)
+  end.
+
+Definition int_smaller_than_16_to_digit (n : int) :=
+  if n =?  0 then "0"%string else
+  if n =?  1 then "1"%string else
+  if n =?  2 then "2"%string else
+  if n =?  3 then "3"%string else
+  if n =?  4 then "4"%string else
+  if n =?  5 then "5"%string else
+  if n =?  6 then "6"%string else
+  if n =?  7 then "7"%string else
+  if n =?  8 then "8"%string else
+  if n =?  9 then "9"%string else
+  if n =?  10 then "A"%string else
+  if n =?  11 then "B"%string else
+  if n =?  12 then "C"%string else
+  if n =?  13 then "D"%string else
+  if n =?  14 then "E"%string else
+  "F"%string.
+
+Definition four_bit_list_to_hexa (l : list bool) :=
+  let n := fold_right (fun (b : bool) (v : int) => (if b then 1 else 0) + 2 * v)
+               0 l in
+    int_smaller_than_16_to_digit n.
+
+Definition int_smaller_than_20_to_decimal (n : int) :=
+  if n <? 10 then int_smaller_than_16_to_digit n else
+   (int_smaller_than_16_to_digit (n / 10) ++
+    int_smaller_than_16_to_digit (n mod 10))%string.
+
+Definition bits_to_hexa (s : int) := four_bit_list_to_hexa (rev (int_to_bit_list 4 s)).
+
+Definition print_game_ID (s : int) :=
+  ("c4x4:" ++ bits_to_hexa (s land 15) ++ bits_to_hexa ((s >> 4) land 15) ++
+     bits_to_hexa ((s >> 8) land 15) ++ bits_to_hexa ((s >>  12) land 15) ++
+   "," ++ int_smaller_than_20_to_decimal (get_cube s))%string.
 
 (* The big computation of full bread first seach, where the     *)
 (* number of iterations is limited by fuel.                     *)
